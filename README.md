@@ -18,18 +18,6 @@ streamlit run app/main.py
 
 ---
 
-## 💡 팁: 점(.) 파일이 안 보일 때
-
-Windows에서 `.gitignore` 같은 파일이 안 보이면:
-
-**파일 탐색기에서:**
-1. `보기` 탭 클릭
-2. `숨김 항목` 체크
-
-**VSCode에서는 자동으로 보여요!**
-
----
-
 ## ✅ 완료 확인
 
 VSCode Explorer에서 이렇게 보이면 성공:
