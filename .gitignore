@@ -1,0 +1,21 @@
+# DB 파일 (재생성 가능)
+database/*.db
+database/*.db.bak
+
+# 수집 데이터 (재생성 가능)
+data/raw/
+data/processed/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# 가상환경
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
