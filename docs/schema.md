@@ -99,11 +99,31 @@ erDiagram
         TIMESTAMP scraped_at
     }
 
+    schedule {
+        INTEGER schedule_id PK
+        INTEGER competition_id FK
+        TEXT    competition_name
+        TEXT    round_number
+        DATE    match_date
+        TEXT    match_time
+        INTEGER home_team_id FK
+        INTEGER away_team_id FK
+        TEXT    home_team_name
+        TEXT    away_team_name
+        TEXT    stadium
+        INTEGER match_id FK
+        TIMESTAMP created_at
+    }
+
     competitions ||--o{ matches : "has"
+    competitions ||--o{ schedule : "has"
     teams ||--o{ matches : "home_team_id"
     teams ||--o{ matches : "away_team_id"
     teams ||--o{ players : "team_id"
+    teams ||--o{ schedule : "home_team_id"
+    teams ||--o{ schedule : "away_team_id"
     matches ||--o{ player_match_stats : "match_id"
+    matches ||--o| schedule : "match_id"
     players ||--o{ player_match_stats : "player_id"
     teams ||--o{ player_match_stats : "team_id"
 ```
@@ -233,14 +253,42 @@ UNIQUE: `(match_id, player_id)` — INSERT OR REPLACE 방식으로 중복 방지
 
 ---
 
-## 현재 적재 현황 (2026-03-02 기준)
+### `schedule` — 시즌 일정 마스터
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| schedule_id | INTEGER PK | 자동 증가 |
+| competition_id | INTEGER FK | → competitions |
+| competition_name | TEXT | 대회명 (CSV 원본값: K리그1, K리그2, K리그 슈퍼컵) |
+| round_number | TEXT | 라운드 (예: 1R, 슈퍼컵) |
+| match_date | DATE | 경기 날짜 |
+| match_time | TEXT | 경기 시작 시간 |
+| home_team_id | INTEGER FK | → teams (홈팀) |
+| away_team_id | INTEGER FK | → teams (어웨이팀) |
+| home_team_name | TEXT | 홈팀명 (CSV 원본값) |
+| away_team_name | TEXT | 어웨이팀명 (CSV 원본값) |
+| stadium | TEXT | 경기장 |
+| match_id | INTEGER FK | → matches (경기 결과 ETL 후 연결) |
 
-| 테이블 | 건수 |
-|---|---|
-| competitions | 1 (2025 K리그1) |
-| teams | 12 |
-| matches | 198 (33라운드 × 6경기) |
-| players | 454 |
-| player_match_stats | 7,919 |
+UNIQUE: `(competition_id, round_number, home_team_id, away_team_id)`
 
-**데이터 소스**: 2025 K리그1 1R~33R (CSV 적재)
+> **matches 테이블과 조인키**: `(competition_id, round_number, home_team_id, away_team_id)` — matches의 UNIQUE 제약과 동일하여 1:1 매핑 보장
+> **match_id**: 경기 결과가 ETL로 적재된 후 UPDATE. NULL이면 아직 미진행 경기.
+
+---
+
+## 현재 적재 현황 (2026-03-14 기준)
+
+| 테이블 | 건수 | 비고 |
+|---|---|---|
+| competitions | 4 | 2024·2025 K리그1, 2026 K리그1·K리그2·슈퍼컵 |
+| teams | 29 | K리그1 13팀 + K리그2 16팀 |
+| matches | 396 | 2024·2025 K리그1 (각 33라운드 × 6경기) |
+| players | ~900 | 2024·2025 K리그1 선수 |
+| player_match_stats | ~15,000 | 2024·2025 K리그1 경기별 스탯 |
+| schedule | 471 | 2026 K리그1 198 / K리그2 272 / 슈퍼컵 1 |
+
+**데이터 소스**
+- 2024 K리그1: 포털 스크래핑 (`ETL_backpill_stable.py`)
+- 2025 K리그1 1R~33R: CSV 적재 (`ETL_ver4.py`)
+- 2025 K리그1 34R~38R: 포털 스크래핑 (`ETL_backpill_stable.py`, `from_round=34`)
+- 2026 일정: CSV 적재 (`data/raw/2026_KLEAGUE/2026_일정표.csv`)

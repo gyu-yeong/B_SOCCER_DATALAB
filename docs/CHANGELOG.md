@@ -4,6 +4,36 @@
 
 ---
 
+
+## [0.3.0] - 2026-03-14
+
+### Added
+- **Streamlit 선수 비교 매트릭스 앱 구축** (`app/main.py`, `app/db.py`)
+  - 시즌 / 팀 / 선수 필터로 최대 3명 선택 (시즌 크로스 비교 지원)
+  - 공격 / 패스 / 수비 카테고리 탭 전환
+  - 지표 칩 토글 (개별 on/off), 90분 기준 토글
+  - 표 형식 / 레이더 차트 전환 (canvas 기반 커스텀 드로잉)
+  - `demo html/kleague-comparison-v2.html` 디자인 기반 다크테마 구현
+  - 선수 표시 형식: `이름 (포지션, #등번호)` → 동명이인 구분 가능
+
+- **`schedule` 테이블 신설** — 2026시즌 K리그 일정 마스터
+  - K리그1 198경기 / K리그2 272경기 / 슈퍼컵 1경기 (총 471경기)
+  - `competitions`, `teams`, `matches` 테이블과 FK 연결
+  - 조인키: `(competition_id, round_number, home_team_id, away_team_id)` → `matches`와 1:1 매핑
+  - 경기 결과 ETL 후 `match_id` 컬럼으로 실제 경기와 연결 가능
+
+- **2026 competitions 추가**: K리그1, K리그2, K리그 슈퍼컵
+- **신규 팀 16개 추가**: 부천(K리그1 승격) + K리그2 15팀
+- **2024시즌 K리그1 데이터 적재 완료** (`ETL_backpill_stable.py` 포털 스크래핑)
+- **2025시즌 34R~38R 데이터 적재 완료** (`from_round=34` 파라미터 활용)
+
+### Changed
+- `scripts/kleague_scripts/` 사용 스크립트 정리 → 미사용 7개 `_archive/`로 이동
+- 프로젝트 GitHub 초기 업로드 (`docs/` 폴더 포함)
+
+---
+
+
 ## [0.2.0] - 2026-03-02
 
 ### Added
