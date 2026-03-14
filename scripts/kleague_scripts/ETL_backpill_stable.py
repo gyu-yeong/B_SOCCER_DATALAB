@@ -301,7 +301,7 @@ if __name__ == "__main__":
 
     # from_round: 이 라운드부터 수집 (기본값=1, 즉 전체)
     # 예) 2025시즌 34R부터 수집: scrape_match_data(driver, 2025, 1, from_round=34)
-    df = scrape_match_data(driver, 2025, 1, from_round=34)
+    df = scrape_match_data(driver, 2024, 1, from_round=1)
 
     print("수집 row:", len(df))
 
