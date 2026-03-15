@@ -1,5 +1,87 @@
 # 스크립트 설명서
 
+현재 사용 중인 스크립트에 대한 역할, 실행 방법, 주요 함수를 정리합니다.
+
+---
+
+## player_master 구축 스크립트 (`scripts/`)
+
+### 1. `build_player_master.py` — player_master 테이블 초기 생성
+
+#### 역할
+Transfermarkt에서 수집한 `선수정보.csv`를 파싱하여 `player_master` 테이블에 적재합니다.
+외국인 선수는 `player_name = NULL`로 적재하고, 한국 음차명 매핑 템플릿 CSV를 생성합니다.
+
+#### 실행 방법
+```bash
+# 프로젝트 루트에서 실행
+python scripts/build_player_master.py
+```
+`C:/Users/koaro/Downloads/선수정보.csv` 경로의 파일을 읽어 DB에 적재합니다.
+
+#### 입출력
+| 구분 | 경로 |
+|---|---|
+| 입력 | `C:/Users/koaro/Downloads/선수정보.csv` (Transfermarkt 수집본) |
+| 출력 | `database/kleague1.db` → `player_master` 테이블 |
+| 출력 | `C:/Users/koaro/Downloads/외국인선수_한국명매핑.csv` (템플릿) |
+
+#### 특이사항
+- `INSERT OR IGNORE` 방식으로 `(name_original, birth_date)` 중복 스킵 → 복수 시즌 데이터 순차 적재 가능
+- `is_korean`: `Citizenship` 컬럼에 "Korea" 포함 여부로 판정
+- 생년월일 파싱: `DD/MM/YYYY` → `YYYY-MM-DD`
+
+---
+
+### 2. `map_foreign_korean_names.py` — 외국인 한국 음차명 자동 매핑
+
+#### 역할
+K리그 데이터포털 `선수인적정보.xlsx`와 `player_master`를 매핑하여 외국인 선수의 한국 음차명을 채운 CSV를 생성합니다.
+
+#### 실행 방법
+```bash
+python scripts/map_foreign_korean_names.py
+```
+
+#### 매핑 전략 (6단계)
+| 순위 | 조건 | 설명 |
+|---|---|---|
+| 1순위 | 생년월일 + 클럽 정확 일치 | 가장 높은 신뢰도 |
+| 2순위 | 생년월일 단독 고유 매칭 | xlsx 내 해당 생년월일이 1명뿐인 경우 |
+| 3순위 | 생년월일 ±30일 + 클럽 퍼지 매칭 | 소스 간 날짜 오차 흡수 |
+| 4순위 | DB players 테이블 음차명 fallback | K리그1 팀 한정 |
+| 5순위 | 같은 연도·일 + 클럽 (월 불일치) | 월만 다른 케이스 |
+| 6순위 | `KNOWN_EXCEPTIONS` 하드코딩 | 자동 매핑 불가 2명 |
+
+#### 입출력
+| 구분 | 경로 |
+|---|---|
+| 입력 | `data/raw/2026_KLEAGUE/선수인적정보.xlsx` |
+| 입력 | `database/kleague1.db` → `player_master` |
+| 출력 | `C:/Users/koaro/Downloads/외국인선수_한국명매핑.csv` |
+
+---
+
+### 3. `import_korean_names.py` — 한국 음차명 DB 반영
+
+#### 역할
+`map_foreign_korean_names.py`가 생성한 CSV(또는 수동 보완 후)를 읽어 `player_master.player_name`을 업데이트합니다.
+
+#### 실행 방법
+```bash
+python scripts/import_korean_names.py
+```
+
+#### 입출력
+| 구분 | 경로 |
+|---|---|
+| 입력 | `C:/Users/koaro/Downloads/외국인선수_한국명매핑.csv` |
+| 출력 | `database/kleague1.db` → `player_master.player_name` UPDATE |
+
+---
+
+## ETL 스크립트 (`scripts/kleague_scripts/`)
+
 **경로**: `scripts/kleague_scripts/`
 
 현재 사용 중인 스크립트 4개에 대한 역할, 실행 방법, 주요 함수를 정리합니다.

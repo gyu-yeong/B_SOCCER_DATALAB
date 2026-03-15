@@ -27,6 +27,22 @@ erDiagram
         TIMESTAMP created_at
     }
 
+    player_master {
+        INTEGER master_id PK
+        TEXT    player_name
+        TEXT    name_original
+        TEXT    birth_date
+        INTEGER height_cm
+        TEXT    citizenship
+        TEXT    citizenship_2
+        INTEGER is_korean
+        TEXT    position
+        TEXT    position_detail
+        TEXT    current_club
+        TEXT    joined
+        INTEGER market_value_eur
+    }
+
     players {
         INTEGER player_id PK
         TEXT    player_name
@@ -34,8 +50,16 @@ erDiagram
         INTEGER back_number
         TEXT    team_name
         INTEGER team_id FK
+        INTEGER master_id FK
         TIMESTAMP created_at
         TIMESTAMP updated_at
+    }
+
+    season_rosters {
+        INTEGER season_year PK
+        INTEGER player_id PK
+        INTEGER team_id PK
+        INTEGER back_number
     }
 
     player_match_stats {
@@ -126,6 +150,9 @@ erDiagram
     matches ||--o| schedule : "match_id"
     players ||--o{ player_match_stats : "player_id"
     teams ||--o{ player_match_stats : "team_id"
+    player_master ||--o{ players : "master_id"
+    players ||--o{ season_rosters : "player_id"
+    teams ||--o{ season_rosters : "team_id"
 ```
 
 ---
@@ -171,20 +198,68 @@ UNIQUE: `(competition_id, round_number, home_team_id, away_team_id)`
 
 ---
 
-### `players` — 선수 정보
+### `player_master` — 선수 인물 원장 (2026시즌 Transfermarkt 기준)
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| master_id | INTEGER PK | 자동 증가 |
+| player_name | TEXT | 한국어 이름 (외국인: 한국 음차명, 한국인: 한국어명) |
+| name_original | TEXT NOT NULL | 원본 이름 (외국인: 영문, 한국인: 한국어) |
+| birth_date | TEXT | 생년월일 (YYYY-MM-DD) |
+| height_cm | INTEGER | 키 (cm) |
+| citizenship | TEXT | 국적 1 |
+| citizenship_2 | TEXT | 국적 2 (이중국적자만) |
+| is_korean | INTEGER | 1: 한국인 / 0: 외국인 |
+| position | TEXT | 포지션 대분류 (Attack / Midfield / Defender / Goalkeeper) |
+| position_detail | TEXT | 포지션 상세 (Right Winger 등) |
+| current_club | TEXT | 현재 소속 클럽 (2026시즌 기준 영문) |
+| joined | TEXT | 현재 클럽 합류일 (YYYY-MM-DD) |
+| market_value_eur | INTEGER | 시장가치 (유로) |
+
+UNIQUE: `(name_original, birth_date)`
+
+> **설계 의도**: 1인 = 1행. `birth_date`가 동명이인 구분 키. 외국인 한국 음차명은 K리그 데이터포털 선수인적정보.xlsx 기준으로 매핑.
+
+---
+
+### `players` — 선수 정보 (스크래핑 누적 로스터)
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
 | player_id | INTEGER PK | 자동 증가 |
 | player_name | TEXT | 선수명 |
 | position | TEXT | 포지션 |
 | back_number | INTEGER | 등번호 |
-| team_name | TEXT | 참고용 소속팀명 (TEXT) |
-| team_id | INTEGER FK | → teams |
+| team_name | TEXT | 스크래핑 시점 소속팀명 (참고용) |
+| team_id | INTEGER FK | → teams (스크래핑 시점 소속팀) |
+| master_id | INTEGER FK | → player_master (581명 매핑, 205명 NULL) |
 
 UNIQUE: `(player_name, back_number)`
 
-> **설계 의도**: 이적 선수는 등번호를 유지하는 경우가 많아 `(player_name, back_number)`로 동일인 식별.
-> 동명이인은 등번호가 다르므로 별도 `player_id`로 구분.
+> **주의**: `team_name`, `team_id`는 스크래핑 시점 단일값이므로 시즌별 소속팀 조회에는 사용 불가. 시즌별 소속팀은 반드시 `season_rosters → teams` 경로 사용.
+> `master_id` NULL 205명: 2026시즌 K리그 미등록 선수(은퇴·해외이적) 또는 동명이인 미분류.
+
+---
+
+### `season_rosters` — 시즌별 선수-팀 스냅샷
+| 컬럼 | 타입 | 설명 |
+|---|---|---|
+| season_year | INTEGER PK | 시즌 연도 (2024, 2025, …) |
+| player_id | INTEGER PK | → players |
+| team_id | INTEGER PK | → teams (경기 당시 실제 소속팀) |
+| back_number | INTEGER | 등번호 |
+
+PK: `(season_year, player_id, team_id)` — 시즌 중 이적 시 두 팀 모두 별도 행으로 기록
+
+> **소스**: `player_match_stats.team_id` 기준 역산. `players.team_id` 미사용(스크래핑 시점 단일값이라 이적 선수 오류 발생).
+> **시즌별 소속팀 조회 쿼리 패턴**:
+> ```sql
+> SELECT pm.player_name, pm.birth_date, sr.season_year, t.team_name
+> FROM season_rosters sr
+> JOIN players p        ON sr.player_id = p.player_id
+> JOIN player_master pm ON p.master_id = pm.master_id
+> JOIN teams t          ON sr.team_id = t.team_id
+> WHERE pm.player_name = '문선민'
+> ORDER BY sr.season_year
+> ```
 
 ---
 
@@ -276,16 +351,18 @@ UNIQUE: `(competition_id, round_number, home_team_id, away_team_id)`
 
 ---
 
-## 현재 적재 현황 (2026-03-14 기준)
+## 현재 적재 현황 (2026-03-15 기준)
 
 | 테이블 | 건수 | 비고 |
 |---|---|---|
-| competitions | 4 | 2024·2025 K리그1, 2026 K리그1·K리그2·슈퍼컵 |
+| competitions | 5 | 2024·2025 K리그1, 2026 K리그1·K리그2·슈퍼컵 |
 | teams | 29 | K리그1 13팀 + K리그2 16팀 |
 | matches | 396 | 2024·2025 K리그1 (각 33라운드 × 6경기) |
-| players | ~900 | 2024·2025 K리그1 선수 |
+| players | 786 | 2024·2025 K리그1 선수 (master_id 581명 매핑) |
 | player_match_stats | ~15,000 | 2024·2025 K리그1 경기별 스탯 |
 | schedule | 471 | 2026 K리그1 198 / K리그2 272 / 슈퍼컵 1 |
+| player_master | 1,000 | 2026시즌 K리그 전체 선수 인물 원장 (한국인 865 / 외국인 135) |
+| season_rosters | 965 | 2024시즌 490행 / 2025시즌 475행 (이적 포함) |
 
 **데이터 소스**
 - 2024 K리그1: 포털 스크래핑 (`ETL_backpill_stable.py`)

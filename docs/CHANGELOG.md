@@ -5,6 +5,38 @@
 ---
 
 
+## [0.4.0] - 2026-03-15
+
+### Added
+- **`player_master` 테이블 신설** — 선수 인물 원장 (2026시즌 Transfermarkt 기준)
+  - 1인 = 1행, UNIQUE: `(name_original, birth_date)`
+  - 한국인 865명 / 외국인 135명 (K리그 전체)
+  - `citizenship_2` 컬럼: 이중국적자 26명 분리 (구분자 `\xa0\xa0` 기준)
+  - 외국인 한국 음차명: K리그 데이터포털 `선수인적정보.xlsx` 기준 6단계 퍼지 매핑으로 135/135명 전원 자동 매핑
+  - 관련 스크립트: `scripts/build_player_master.py`, `scripts/map_foreign_korean_names.py`, `scripts/import_korean_names.py`
+
+- **`season_rosters` 테이블 신설** — 시즌별 선수-팀 스냅샷
+  - PK: `(season_year, player_id, team_id)` — 시즌 중 이적 시 두 팀 모두 별도 행으로 기록
+  - 소스: `player_match_stats.team_id` (경기 당시 실제 소속팀 직접 참조)
+  - 2024시즌 490행 / 2025시즌 475행 (시즌 중 이적 12건 포함)
+
+- **`players.master_id` 컬럼 추가** — `player_master` FK
+  - 786명 중 581명 자동 매핑 (1:1 이름 매핑 560명 + 팀필터 추가 21명)
+  - 205명 NULL 유지 (은퇴·해외이적으로 player_master 미등록 또는 동명이인 미분류)
+  - 인덱스 추가: `idx_players_master_id`
+
+### Fixed
+- **`season_rosters` 팀 오기록 버그** — 초기 생성 시 `players.team_id`(스크래핑 시점 고정값) 사용으로 이적 선수의 이전 시즌 팀이 잘못 기록되던 문제
+  - `players.team_id` → `player_match_stats.team_id`로 소스 변경
+  - 동시에 PK를 `(season_year, player_id)` → `(season_year, player_id, team_id)`로 확장하여 시즌 중 이적 처리
+
+### Known Issues
+- `player_master`가 2026시즌 기준으로만 구축되어, 2025시즌 이후 K리그를 떠난 외국인 선수(예: 안양 야고)가 동명이인으로 오매핑될 수 있음
+  - 해결 방법: 2025시즌 `선수정보.csv` 추가 수집 후 player_master 재구축 필요 (`docs/todo_list.md` 참조)
+
+---
+
+
 ## [0.3.0] - 2026-03-14
 
 ### Added
