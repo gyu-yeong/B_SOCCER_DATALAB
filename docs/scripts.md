@@ -4,7 +4,7 @@
 
 ---
 
-## player_master 구축 스크립트 (`scripts/`)
+## player_master 구축 스크립트 (`scripts/player_info/`)
 
 ### 1. `build_player_master.py` — player_master 테이블 초기 생성
 
@@ -15,7 +15,7 @@ Transfermarkt에서 수집한 `선수정보.csv`를 파싱하여 `player_master`
 #### 실행 방법
 ```bash
 # 프로젝트 루트에서 실행
-python scripts/build_player_master.py
+python scripts/player_info/build_player_master.py
 ```
 `C:/Users/koaro/Downloads/선수정보.csv` 경로의 파일을 읽어 DB에 적재합니다.
 
@@ -40,7 +40,7 @@ K리그 데이터포털 `선수인적정보.xlsx`와 `player_master`를 매핑�
 
 #### 실행 방법
 ```bash
-python scripts/map_foreign_korean_names.py
+python scripts/player_info/map_foreign_korean_names.py
 ```
 
 #### 매핑 전략 (6단계)
@@ -69,7 +69,7 @@ python scripts/map_foreign_korean_names.py
 
 #### 실행 방법
 ```bash
-python scripts/import_korean_names.py
+python scripts/player_info/import_korean_names.py
 ```
 
 #### 입출력
