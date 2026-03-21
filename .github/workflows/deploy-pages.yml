@@ -1,0 +1,97 @@
+name: Deploy Demo Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "demo html/**"
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build dist/
+        run: |
+          mkdir -p dist
+          cp "demo html/"*.html dist/
+
+          # ── index.html 헤더 생성 ──────────────────────────
+          cat > dist/index.html << 'HTMLEOF'
+          <!DOCTYPE html>
+          <html lang="ko">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>K리그 데이터랩 — 데모</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+            <style>
+              *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+              body {
+                font-family: 'Inter', 'Noto Sans KR', sans-serif;
+                background: #f2f4f7; min-height: 100vh;
+                display: flex; align-items: flex-start; justify-content: center;
+                padding: 60px 24px 80px;
+              }
+              .card {
+                background: #fff; border-radius: 16px;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+                padding: 40px; max-width: 680px; width: 100%;
+              }
+              .logo { display: flex; align-items: center; gap: 6px; margin-bottom: 20px; }
+              .logo-k { font-size: 1.4rem; font-weight: 800; color: #2563eb; }
+              .logo-rest { font-size: 1.1rem; font-weight: 700; color: #141922; opacity: .7; letter-spacing: 2px; }
+              h1 { font-size: 1.3rem; font-weight: 800; color: #141922; margin-bottom: 6px; }
+              h1 span { color: #2563eb; }
+              .sub { font-size: 0.80rem; color: #6b7585; margin-bottom: 28px; }
+              .divider { border: none; border-top: 1.5px solid #e8eaef; margin-bottom: 20px; }
+              ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+              a {
+                display: flex; flex-direction: column;
+                padding: 16px 20px; border: 1.5px solid #e2e5ea;
+                border-radius: 10px; text-decoration: none;
+                color: #141922; font-weight: 600; font-size: 0.88rem;
+                transition: border-color .15s, color .15s, box-shadow .15s;
+              }
+              a:hover { border-color: #2563eb; color: #2563eb; box-shadow: 0 2px 8px rgba(37,99,235,0.10); }
+              a small { font-weight: 400; color: #9aa3b0; font-size: 0.72rem; margin-top: 4px; font-family: monospace; }
+              .footer { margin-top: 28px; font-size: 0.68rem; color: #b0b8c8; text-align: right; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="logo"><span class="logo-k">K</span><span class="logo-rest">LEAGUE DATALAB</span></div>
+              <h1>데모 <span>페이지</span> 목록</h1>
+              <p class="sub">K리그 선수 분석 시각화 샘플 · K리그1 2024 · 더미 데이터 기준</p>
+              <hr class="divider">
+              <ul>
+          HTMLEOF
+
+          # demo html/*.html 을 순회하며 <li> 동적 생성
+          for file in "demo html/"*.html; do
+            filename=$(basename "$file")
+            # 파일명에서 레이블: 확장자 제거, 하이픈→공백, 단어 첫 글자 대문자
+            label=$(echo "$filename" | sed 's/\.html$//' | sed 's/-/ /g')
+            printf '        <li><a href="%s">%s<small>%s</small></a></li>\n' \
+              "$filename" "$label" "$filename" >> dist/index.html
+          done
+
+          # 닫는 태그
+          cat >> dist/index.html << 'HTMLEOF'
+              </ul>
+              <div class="footer">자동 생성됨 · K리그 데이터랩</div>
+            </div>
+          </body>
+          </html>
+          HTMLEOF
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages

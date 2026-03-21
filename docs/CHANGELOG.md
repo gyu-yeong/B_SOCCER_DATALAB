@@ -4,6 +4,36 @@
 
 ---
 
+## [0.5.0] - 2026-03-21
+
+### Added
+- **웹 디자인 가이드 신설** (`docs/WEBDESIGN_GUIDE.md`)
+  - K리그 컬러 시스템, 타이포그래피, 컴포넌트 라이브러리 정의
+  - 구현 우선순위 및 페이지 목록, 데이터 연결 전략 포함
+  - 세션 간 디자인 일관성 유지를 위한 단일 진실 공급원
+
+- **데모 HTML: 선수 랭킹 v1** (`demo html/kleague-datamb-ranking-v1.html`)
+  - K리그 다크 테마 (라임 `#e8ff3c` 강조색)
+  - 공중볼 경합 승리 Top 20 · 23세 이하 필터 · 90분당 기준
+  - 값에 따른 라임→올리브 그라디에이션 pill 바 차트
+
+- **데모 HTML: 선수 랭킹 v2** (`demo html/kleague-datamb-ranking-v2.html`)
+  - DATAMB 라이트 테마 (블루 `#2563eb` 강조색)
+  - 드롭다운 필터 (지표 / 포지션 / 연령 / 리그) + 아이콘 버튼
+  - 연블루→진블루 그라디에이션 pill 바 차트 · 5개 지표 데이터셋
+
+- **데모 HTML: 선수 비교 매트릭스 v3** (`demo html/kleague-comparison-v3-datamb.html`)
+  - 기존 v2(다크)를 DATAMB 라이트 스타일로 전면 재설계
+  - 플레이어 색상 P1=블루·P2=앰버·P3=에메랄드 / 라운드 카드 UI
+  - 드롭다운 필터 + 시계·달력 아이콘 버튼 / 레이더 그리드 라이트 변환
+
+- **GitHub Pages 자동 배포** (`.github/workflows/deploy-pages.yml`)
+  - `demo html/` 변경 push 시 gh-pages 브랜치 자동 배포
+  - index.html 동적 생성: 새 HTML 파일 추가 시 링크 목록 자동 갱신
+  - 배포 URL: `https://gyu-yeong.github.io/B_SOCCER_DATALAB/`
+
+---
+
 
 ## [0.4.0] - 2026-03-15
 
