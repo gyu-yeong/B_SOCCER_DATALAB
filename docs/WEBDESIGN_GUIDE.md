@@ -10,202 +10,164 @@
 | 키워드 | 설명 |
 |--------|------|
 | **데이터 퍼스트** | 시각화가 주인공, UI는 배경 |
-| **K리그 아이덴티티** | 라임 #e8ff3c 강조색, 다크 배경, 한글 폰트 |
-| **정보 밀도** | 태블로 레퍼런스처럼 지표를 최대한 표시하되 가독성 유지 |
+| **모드 일관성** | 다크 / 라이트 두 모드만 허용, 혼용 금지 |
+| **정보 밀도** | 지표를 최대한 표시하되 가독성 유지 |
 | **소셜 친화** | 인스타/X 공유용 카드는 1080×1080 or 1080×1350 기준 |
+| **K리그 아이덴티티** | 한글 폰트 필수. 색상·로고·브랜드 요소는 추후 확정 예정 → [섹션 9] |
 
 ---
 
-## 2. 컬러 시스템
+## 2. 컬러 시스템 — 모드 제약
 
-```css
-:root {
-  /* 배경 */
-  --bg:       #0a0d12;   /* 최하단 배경 */
-  --surface:  #111519;   /* 카드/패널 */
-  --surface2: #181d24;   /* 중첩 레이어 */
-  --border:   #1e2530;   /* 구분선 */
+### 원칙
+- **허용 모드: 다크(Dark) / 라이트(Light) 두 가지만**
+- 모드 내 accent, card, border 등 구체적 hex 값은 **레퍼런스에 따라 자유**
+- 다크와 라이트를 한 페이지에 혼용하는 것은 **금지**
 
-  /* 텍스트 */
-  --text:     #f0f4ff;   /* 본문 */
-  --muted:    #5a6578;   /* 비활성/힌트 */
-  --muted2:   #8a97a8;   /* 서브텍스트 */
-
-  /* 강조 (K리그 라임) */
-  --accent:   #e8ff3c;   /* PRIMARY — K리그 아이덴티티 */
-
-  /* 선수 구분 색 (최대 3인 비교) */
-  --p1: #e8ff3c;          /* 라임 — Player 1 */
-  --p2: #3caaff;          /* 스카이블루 — Player 2 */
-  --p3: #ff8f3c;          /* 오렌지 — Player 3 */
-  --p4: #c03cff;          /* 퍼플 — Player 4 (확장 시) */
-}
+### 다크 모드 제약
+```
+배경:   어두운 계열 필수 (명도 기준 HSL Lightness ≤ 15%)
+본문:   밝은 텍스트 (HSL Lightness ≥ 85%)
+카드:   배경보다 밝고, 배경보다 어두운 사이 (중간 레이어)
+구분선: 반투명 흰색 계열 (rgba(255,255,255, 0.05~0.15))
 ```
 
-### 사용 규칙
-- `--accent` 는 **최고값 강조, 로고, 탭 활성화, 주요 CTA**에만 사용
-- 배경에 색을 넣을 때는 반드시 알파 13% 이하: `rgba(232,255,60,0.13)`
-- 소셜카드용 라이트모드는 별도 섹션 참조
+### 라이트 모드 제약
+```
+배경:   밝은 계열 필수 (HSL Lightness ≥ 92%)
+본문:   어두운 텍스트 (HSL Lightness ≤ 20%)
+카드:   흰색 또는 배경보다 밝은 색
+구분선: 연한 회색 계열 (rgba(0,0,0, 0.05~0.12))
+```
+
+### 공통 제약
+- accent 색은 모드 내 배경과 **대비비 4.5:1 이상** 확보
+- 선수 구분 색(P1/P2/P3)은 서로 충분히 구별 가능해야 함
+- 색맹 접근성: 빨강-초록 단독 구분 지양 (아이콘/패턴 병행)
 
 ---
 
 ## 3. 타이포그래피
 
-| 역할 | 폰트 | 용도 |
+### 필수 (모든 페이지 공통)
+| 역할 | 폰트 | 이유 |
 |------|------|------|
-| **디스플레이** | `Bebas Neue` | 로고, 대제목, 숫자 강조 |
-| **본문 (한글)** | `Noto Sans KR` | 선수명, 팀명, 설명 |
-| **데이터/코드** | `JetBrains Mono` | 스탯 수치, 배지, 레이블 |
+| **한글 본문** | `Noto Sans KR` | 선수명·팀명·설명 — 한글 필수 |
+
+### 권장 (레퍼런스에 따라 교체 가능)
+| 역할 | 기본 권장 | 대안 예시 |
+|------|-----------|-----------|
+| **디스플레이/대제목** | `Bebas Neue` | `Anton`, `Black Han Sans`, `Oswald` |
+| **데이터/수치** | `JetBrains Mono` | `Roboto Mono`, `IBM Plex Mono` |
 
 ```html
-<!-- Google Fonts 임포트 — 모든 페이지 공통 -->
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!-- 최소 임포트 (한글 필수) -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
 ```
 
-### 폰트 사이즈 스케일
+### 폰트 사이즈 원칙
 ```
-로고/대제목:    Bebas Neue  3rem      letter-spacing: 3px
-섹션 헤더:     Bebas Neue  1.8rem    letter-spacing: 2px
-선수명:        Noto Sans   1rem      weight: 700
-서브텍스트:    Noto Sans   0.72–0.82rem  weight: 300–400
-레이블/배지:   JetBrains   0.62–0.72rem  letter-spacing: 1–2px
-```
-
----
-
-## 4. 컴포넌트 라이브러리
-
-### 4-1. 헤더 (공통)
-```html
-<header> <!-- sticky, backdrop-blur: 14px, bg: rgba(10,13,18,0.94) -->
-  <div class="logo">
-    <span class="logo-k">K</span>          <!-- Bebas Neue, --accent -->
-    <span class="logo-rest">LEAGUE STATS</span>  <!-- Bebas Neue, --text, opacity 0.82 -->
-  </div>
-  <span class="season-badge">2024 SEASON</span>  <!-- JetBrains Mono, border, --muted2 -->
-</header>
-```
-
-### 4-2. 탭 버튼
-- 기본: `background: none`, `color: --muted`, `border-bottom: 2px solid transparent`
-- 활성: `color: --accent`, `border-bottom-color: --accent`
-- 폰트: JetBrains Mono, 0.7rem, uppercase, letter-spacing: 1.5px
-
-### 4-3. 선수 비교 바 (Squawka 스타일)
-- 바 높이: `3px`, border-radius: `2px`
-- 최고값: 숫자 크기 `1.35rem`, 해당 선수 색
-- 나머지: `1.2rem`, `--text` 색
-- 최고 배지: `★ 최고` 텍스트, JetBrains Mono 0.56rem
-
-### 4-4. 레이더 차트 (Canvas 기반)
-- 배경: `#0a0d12`, 그리드선: `#1a2030` / `#2a3340`
-- 각 선수 fill: 해당 색 `alpha 0.13`
-- 선 두께: 2px, 도트 반경: 4px, 외곽선: `#0a0d12` 1.5px
-- 스포크 레이블: Noto Sans KR 11px, `--muted2`
-
-### 4-5. 스탯 칩 필터
-- 기본: `border: 1px solid --border`, `color: --muted2`, `border-radius: 2px`
-- 선택: `border-color: --accent`, `color: --accent`, `bg: rgba(232,255,60,0.07)`
-- 폰트: JetBrains Mono 0.67rem
-
-### 4-6. 소셜 카드 (모바일 export용)
-> 별도 섹션 참조
-
----
-
-## 5. 구현 우선순위 & 페이지 목록
-
-### Priority 1: 선수 비교 매트릭스 ✅ (v2 완성)
-- 파일: `demo html/kleague-comparison-v2.html`
-- 기능: 3인 비교, 표/레이더 전환, 카테고리 탭, 스탯 칩 필터
-- **다음 단계**: DB 연동 (정적 DATA 객체 → API fetch)
-
-**DB 연동 계획:**
-```javascript
-// 현재 (정적)
-const DATA = { attack: { rows: [...] } }
-
-// 목표 (API)
-const res = await fetch('/api/compare?players=조규성,주민규,이승우&season=2024')
-const DATA = await res.json()
-```
-
-### Priority 2: 소셜 미디어 카드 (미구현)
-- 타깃: 인스타그램 1080×1080 / 1080×1350
-- 스타일 레퍼런스: DATAMB.FOOTBALL (다크, 심플, 큰 숫자)
-- 출력: PNG export (html2canvas 또는 Puppeteer)
-- 컴포넌트 유형:
-  - 선수 주간 성적 카드
-  - 팀 경기 결과 요약 카드
-  - 리그 순위표 카드
-
-**소셜 카드 컬러 (라이트모드 옵션):**
-```css
-/* 소셜 카드 전용 — 인스타 가독성 */
---sc-bg:     #0a0d12;    /* 다크 유지 (DATAMB 스타일) */
---sc-accent: #e8ff3c;    /* K리그 라임 */
---sc-text:   #ffffff;
-```
-
-### Priority 3: 팀/선수 스타일 지표 차트 (미구현)
-- 레퍼런스: PSG 스타일 슬라이더 차트 (Sofascore 스타일)
-- 스펙: 수평 점/슬라이더 배치, 양 끝 레이블, 중앙값 기준
-- K리그 적용: Patient↔Direct, Press Less↔Press More 등
-
----
-
-## 6. 시각화 패턴 (레퍼런스 분석)
-
-### 레퍼런스 1: PSG 스타일 슬라이더 (Sofascore)
-```
-특징:
-- 화이트 배경
-- 점(dot) + 라인 슬라이더
-- 양 극단 텍스트 레이블
-- 섹션 헤더: 검정 박스 안 흰 텍스트 (STYLE / PERFORMANCE)
-- 10점 척도
-K리그 적용시: 배경 --bg, 점 색상 --accent, 라인 --border
-```
-
-### 레퍼런스 2: 산점도 (DatoBHJ 스타일)
-```
-특징:
-- 다크 네이비 배경
-- 티얼(teal)/민트 색 도트
-- 점선 중앙값 기준선
-- 선수명 레이블 (각 도트 옆)
-- X축: 패스/90, Y축: 키패스/90
-K리그 적용시: 도트색 --p1 (라임), 중앙선 --border, 레이블 --muted2
-```
-
-### 레퍼런스 3: Squawka Comparison Matrix
-```
-특징:
-- 퍼플 배경 + 선수 카드 헤더
-- 가로 바 차트 (녹색=최고, 적색=아님)
-- Total / Per90 토글
-- 최대 4명 비교
-- Add Player 빈 슬롯
-K리그 적용: 퍼플 → --bg 다크, 녹색/적색 → --accent/--muted
+대제목:     2rem 이상
+섹션 헤더:  1.4~1.8rem
+선수명:     0.9~1.1rem, weight 700
+서브텍스트: 0.7~0.85rem, weight 300~400
+레이블:     0.6~0.75rem, letter-spacing 1px 이상
 ```
 
 ---
 
-## 7. 레이아웃 그리드
+## 4. 레이아웃 그리드
 
 ```
 데스크탑: max-width 1320px, padding 36px 40px
-모바일:   padding 16px 20px
-그리드:   CSS Grid, 3열 (선수 비교 기본)
-갭:      16–28px
+태블릿:   max-width 960px,  padding 24px 28px
+모바일:   padding 16px 20px (모바일 퍼스트 — 전체 트래픽 78% 이상)
+그리드:   CSS Grid 권장, 선수 비교 기본 3열
+갭:       16~28px
 ```
+
+---
+
+## 5. 컴포넌트 공통 규칙
+
+> 구체적 색상 값은 버전마다 달라질 수 있으므로 아래는 **구조·동작 규칙**만 정의한다.
+
+### 5-1. 헤더
+- sticky + backdrop-blur 14px
+- 로고: 브랜드 문자 "K" 강조 + "LEAGUE STATS" 서브텍스트
+- 우측: 시즌 배지 (JetBrains Mono 계열, letter-spacing)
+
+### 5-2. 탭 버튼
+- 기본: 색 없음, muted 텍스트
+- 활성: accent 색 텍스트 + 하단 border 2~3px
+
+### 5-3. 선수 비교 바
+- 바 높이: 3~10px, border-radius 100px (pill)
+- 최고값: 숫자 강조 + 배지 (★ 최고 또는 동등 표기)
+- 바 색상: 선수별 구분색, 값 크기에 따른 그라디에이션 허용
+
+### 5-4. 레이더 차트
+- 폴리곤 fill: 선수 색 alpha 0.10~0.15
+- 선 두께: 2px, 꼭짓점 도트 반경 4px
+- 그리드선: 모드에 맞는 미묘한 대비
+
+### 5-5. 필터 (칩 또는 드롭다운)
+- 칩: 기본 border → 선택 시 accent 색 border + bg tint
+- 드롭다운: 라운드 border, hover 시 accent 색 border
+
+### 5-6. 소셜 카드 (모바일 export용)
+- 사이즈: 1080×1080 (정방형) 또는 1080×1350 (세로형)
+- PNG export: html2canvas 또는 Puppeteer
+- 다크 모드 권장 (DATAMB 스타일 레퍼런스)
+
+---
+
+## 6. 산출물 규칙
+
+### HTML 파일
+- 저장 위치: `demo html/` 하위
+- 컴포넌트 경계 주석 필수:
+  ```html
+  <!-- COMPONENT: PlayerCard -->
+  ...
+  <!-- /COMPONENT: PlayerCard -->
+  ```
+- 파일 상단 버전 헤더 필수:
+  ```html
+  <!-- v{X.Y} | {날짜} | 레퍼런스: {출처/키워드} | 변경: {요약} -->
+  ```
+
+### 단계별 전환 순서
+```
+1단계: HTML 정적 데모 (현재)   — demo html/ 저장
+2단계: React 컴포넌트          — 컴포넌트 주석 경계 기준으로 분리
+3단계: Streamlit 배포          — st.columns + plotly
+```
+
+---
+
+## 7. 구현 우선순위 & 페이지 목록
+
+### Priority 1: 선수 비교 매트릭스
+- ✅ `demo html/kleague-comparison-v2.html` — 다크 테마
+- ✅ `demo html/kleague-comparison-v3-datamb.html` — 라이트 테마
+- **다음 단계**: DB 연동 (정적 DATA 객체 → API fetch)
+
+### Priority 2: 선수 랭킹 차트
+- ✅ `demo html/kleague-datamb-ranking-v1.html` — 다크 테마
+- ✅ `demo html/kleague-datamb-ranking-v2.html` — 라이트 테마
+- **다음 단계**: 지표 드롭다운 실데이터 연결
+
+### Priority 3: 소셜 미디어 카드 (미구현)
+- 타깃: 인스타그램 1080×1080 / 1080×1350
+- 컴포넌트: 선수 주간 성적 카드, 팀 경기 결과, 리그 순위표
+
+### Priority 4: 팀/선수 스타일 지표 차트 (미구현)
+- 레퍼런스: PSG 스타일 슬라이더 차트 (Sofascore)
 
 ---
 
 ## 8. 데이터 연결 전략
-
-### 현재 상태
-- 모든 페이지: 하드코딩된 정적 데이터
 
 ### 단계별 연동 계획
 ```
@@ -225,51 +187,28 @@ GET /api/social-card/{player_id}?type=weekly
 
 ---
 
-## 9. 배포 환경
+## 9. K리그 아이덴티티 (미확정 — 추후 작성)
 
-- **목표**: 외부 공개 (Vercel 또는 GitHub Pages)
-- **백엔드**: FastAPI → Vercel Serverless 또는 Railway
-- **정적 에셋**: CDN 활용
-
----
-
-## 10. 파일 구조 (예정)
+> POC 단계에서는 색상·로고·브랜드 요소를 고정하지 않는다.
+> 디자인 방향 확정 후 아래 항목을 채운다.
 
 ```
-app/
-├── web/
-│   ├── index.html              # 메인 랜딩
-│   ├── comparison/
-│   │   └── index.html          # 선수 비교 매트릭스
-│   ├── social-card/
-│   │   └── index.html          # 소셜 카드 생성기
-│   ├── team-style/
-│   │   └── index.html          # 팀 스타일 지표
-│   └── assets/
-│       ├── css/
-│       │   └── design-system.css   # 공통 CSS 변수
-│       └── js/
-│           └── api.js              # fetch 헬퍼
-demo html/
-├── kleague-comparison-v2.html  # ✅ 완성 — 비교 매트릭스 프로토타입
-└── (다음 파일들 추가 예정)
+[ ] 공식 대표 색상 (Primary / Secondary)
+[ ] 공식 폰트 또는 K리그 느낌 폰트
+[ ] 로고 사용 규칙
+[ ] 팀 엠블럼 처리 방식
+[ ] K리그 특화 UI 패턴
 ```
 
 ---
 
-## 11. 서브에이전트 사용 지침
+## 10. 배포 환경
 
-새 웹 페이지 구현 요청 시 Claude에게 전달할 컨텍스트:
-
-```
-1. 이 가이드(docs/WEBDESIGN_GUIDE.md)를 먼저 읽을 것
-2. 기존 demo html/kleague-comparison-v2.html을 베이스 레퍼런스로 사용
-3. 새 파일은 demo html/ 아래에 생성 (프로토타입 단계)
-4. 외부 라이브러리 최소화 — 순수 HTML/CSS/JS 우선
-5. 데이터는 정적 더미 데이터로 먼저 구현 후 API 연동
-```
+- **GitHub Pages**: `demo html/` → gh-pages 브랜치 자동 배포
+- **배포 URL**: `https://gyu-yeong.github.io/B_SOCCER_DATALAB/`
+- **최종 목표**: Vercel 또는 Railway (FastAPI 백엔드 포함)
 
 ---
 
-*최종 업데이트: 2026-03-15*
+*최종 업데이트: 2026-03-21*
 *담당: K리그 데이터랩 프로젝트*
