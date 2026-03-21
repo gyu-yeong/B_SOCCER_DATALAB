@@ -128,50 +128,41 @@ def create_driver() -> uc.Chrome:
 
 def dismiss_popups(driver: uc.Chrome) -> None:
     """
-    Transfermarkt 쿠키/광고 동의 팝업을 자동으로 닫는다.
-    실제 확인된 셀렉터:
-      - #notice .row-consent button  (contentpass "Accept & continue")
-      - XPath: //*[@id="notice"]/div[3]/div[1]/div/button
+    Transfermarkt contentpass 동의 팝업을 닫는다.
+    팝업은 iframe 안에 렌더링되므로 iframe 컨텍스트로 전환 후 클릭해야 함.
     """
-    # 1. 실제 확인된 셀렉터 (최우선)
-    CONFIRMED_SELECTORS = [
-        "#notice .row-consent button",
-        "#notice > div.message-component.message-row.row-choice > div.message-component.message-row.row-consent > div > button",
-    ]
-    for sel in CONFIRMED_SELECTORS:
-        try:
-            btn = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, sel))
+    try:
+        # 1. 모든 iframe 순회 → #notice 있는 iframe 찾기
+        iframes = driver.find_elements(By.TAG_NAME, "iframe")
+        clicked = False
+        for iframe in iframes:
+            try:
+                driver.switch_to.frame(iframe)
+                btn = WebDriverWait(driver, 2).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "#notice .row-consent button"))
+                )
+                btn.click()
+                time.sleep(1.5)
+                print("  [팝업] iframe 내 동의 클릭 완료")
+                clicked = True
+                break
+            except Exception:
+                driver.switch_to.default_content()
+                continue
+
+        driver.switch_to.default_content()
+
+        if not clicked:
+            # 2. iframe 없이 직접 시도 (구버전 또는 다른 레이아웃)
+            btn = WebDriverWait(driver, 3).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "#notice .row-consent button"))
             )
             btn.click()
             time.sleep(1.5)
-            print(f"  [팝업] 동의 클릭 완료 ({sel})")
-            return
-        except Exception:
-            continue
+            print("  [팝업] 직접 동의 클릭 완료")
 
-    # 2. XPath 시도
-    try:
-        btn = WebDriverWait(driver, 3).until(
-            EC.element_to_be_clickable((By.XPATH, '//*[@id="notice"]/div[3]/div[1]/div/button'))
-        )
-        btn.click()
-        time.sleep(1.5)
-        print("  [팝업] 동의 클릭 완료 (XPath)")
-        return
     except Exception:
-        pass
-
-    # 3. JS 직접 클릭 (iframe 등 접근 제한 우회)
-    try:
-        driver.execute_script(
-            'document.querySelector("#notice > div.message-component.message-row.row-choice > div.message-component.message-row.row-consent > div > button").click();'
-        )
-        time.sleep(1.5)
-        print("  [팝업] 동의 클릭 완료 (JS querySelector)")
-        return
-    except Exception:
-        pass
+        driver.switch_to.default_content()
 
 
 # ─────────────────────────────────────────────
