@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K리그 선수 비교 — DATAMB 스타일</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #f2f4f7;
+  --card:     #ffffff;
+  --border:   #e2e5ea;
+  --border2:  #ebeef3;
+  --text:     #141922;
+  --sub:      #6b7585;
+  --muted:    #9aa3b0;
+  --blue:     #2563eb;
+  --blue-lt:  rgba(37,99,235,0.08);
+  --blue-md:  rgba(37,99,235,0.15);
+  --p1:       #2563eb;
+  --p2:       #f59e0b;
+  --p3:       #10b981;
+  --p1-lt:    rgba(37,99,235,0.10);
+  --p2-lt:    rgba(245,158,11,0.10);
+  --p3-lt:    rgba(16,185,129,0.10);
+  --track:    #e8eaef;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Inter','Noto Sans KR',sans-serif; min-height:100vh; }
+
+/* ── HEADER ── */
+header {
+  position:sticky; top:0; z-index:200;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 40px; height:56px;
+  background:rgba(255,255,255,0.95);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+}
+.logo { display:flex; align-items:center; gap:6px; }
+.logo-k { font-size:1.3rem; font-weight:800; color:var(--blue); letter-spacing:1px; }
+.logo-rest { font-size:1.05rem; font-weight:700; color:var(--text); opacity:.75; letter-spacing:2px; }
+.season-badge {
+  font-size:0.68rem; font-weight:600; letter-spacing:1.5px;
+  color:var(--sub); background:var(--bg);
+  border:1.5px solid var(--border); padding:4px 12px; border-radius:6px;
+}
+
+/* ── MAIN ── */
+.main { max-width:1200px; margin:0 auto; padding:36px 40px 80px; }
+
+/* ── PAGE TITLE ── */
+.page-title { margin-bottom:28px; }
+.page-title h1 { font-size:1.9rem; font-weight:800; letter-spacing:-0.5px; line-height:1.1; }
+.page-title h1 span { color:var(--blue); }
+.page-title p { margin-top:8px; font-size:0.80rem; color:var(--sub); font-weight:400; }
+
+/* ── FILTER BAR ── */
+.filter-bar {
+  display:flex; align-items:center; gap:10px;
+  flex-wrap:wrap; margin-bottom:24px;
+}
+.select-wrap { position:relative; display:flex; align-items:center; }
+.select-wrap select {
+  appearance:none; background:var(--card);
+  border:1.5px solid var(--border); border-radius:10px;
+  padding:8px 34px 8px 14px;
+  font-family:'Inter','Noto Sans KR',sans-serif;
+  font-size:0.82rem; font-weight:500; color:var(--text);
+  cursor:pointer; outline:none; transition:border-color .15s;
+}
+.select-wrap select:hover, .select-wrap select:focus { border-color:var(--blue); }
+.select-wrap::after {
+  content:''; position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  width:0; height:0;
+  border-left:4px solid transparent; border-right:4px solid transparent;
+  border-top:5px solid var(--sub); pointer-events:none;
+}
+.icon-btn {
+  width:40px; height:40px; border-radius:10px;
+  border:1.5px solid var(--border); background:var(--card);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--sub);
+  transition:all .15s; flex-shrink:0;
+}
+.icon-btn:hover { border-color:var(--blue); color:var(--blue); }
+.icon-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+.icon-btn svg { width:16px; height:16px; }
+
+/* ── PLAYER CARDS ── */
+.player-selector { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px; }
+.player-card {
+  background:var(--card); border:1.5px solid var(--border);
+  border-radius:12px; padding:16px; cursor:pointer;
+  transition:border-color .2s, box-shadow .2s;
+}
+.player-card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.07); }
+.player-card.active-1 { border-color:var(--p1); background:linear-gradient(135deg,var(--p1-lt),var(--card)); }
+.player-card.active-2 { border-color:var(--p2); background:linear-gradient(135deg,var(--p2-lt),var(--card)); }
+.player-card.active-3 { border-color:var(--p3); background:linear-gradient(135deg,var(--p3-lt),var(--card)); }
+
+.player-slot-label { font-size:0.62rem; font-weight:700; letter-spacing:2px; color:var(--muted); margin-bottom:10px; text-transform:uppercase; }
+.active-1 .player-slot-label { color:var(--p1); }
+.active-2 .player-slot-label { color:var(--p2); }
+.active-3 .player-slot-label { color:var(--p3); }
+
+.player-info { display:flex; align-items:center; gap:12px; }
+.player-avatar {
+  width:44px; height:44px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.1rem; font-weight:800; flex-shrink:0;
+}
+.avatar-1 { background:var(--p1-lt); color:var(--p1); }
+.avatar-2 { background:var(--p2-lt); color:var(--p2); }
+.avatar-3 { background:var(--p3-lt); color:var(--p3); }
+
+.player-name { font-size:0.95rem; font-weight:700; color:var(--text); }
+.player-meta { font-size:0.72rem; color:var(--sub); margin-top:3px; display:flex; gap:8px; align-items:center; }
+.player-pos {
+  font-size:0.62rem; font-weight:700; padding:2px 7px;
+  border-radius:4px; letter-spacing:.5px;
+}
+.pos-1 { background:var(--p1-lt); color:var(--p1); }
+.pos-2 { background:var(--p2-lt); color:var(--p2); }
+.pos-3 { background:var(--p3-lt); color:var(--p3); }
+
+/* ── CONTROLS ROW ── */
+.controls-row {
+  display:flex; align-items:stretch; justify-content:space-between;
+  background:var(--card); border:1.5px solid var(--border);
+  border-radius:12px 12px 0 0; border-bottom:none;
+  padding:0 8px;
+}
+.category-tabs { display:flex; gap:0; }
+.tab-btn {
+  background:none; border:none; color:var(--muted);
+  font-family:'Inter',sans-serif; font-size:0.78rem; font-weight:600;
+  letter-spacing:.5px; padding:14px 20px; cursor:pointer;
+  border-bottom:2.5px solid transparent; position:relative; top:1px;
+  transition:color .2s, border-color .2s;
+}
+.tab-btn:hover { color:var(--text); }
+.tab-btn.active { color:var(--blue); border-bottom-color:var(--blue); }
+
+.view-toggle { display:flex; align-items:center; gap:4px; padding:8px 0; }
+.view-btn {
+  display:flex; align-items:center; gap:6px;
+  background:none; border:1.5px solid var(--border); border-radius:8px;
+  color:var(--muted); font-family:'Inter',sans-serif; font-size:0.72rem; font-weight:600;
+  padding:6px 14px; cursor:pointer; transition:all .15s;
+}
+.view-btn:hover { border-color:var(--blue); color:var(--blue); }
+.view-btn.active { background:var(--blue); border-color:var(--blue); color:#fff; }
+.view-btn svg { width:13px; height:13px; }
+
+/* ── STAT FILTER PANEL ── */
+.stat-filter-panel {
+  background:var(--card); border:1.5px solid var(--border); border-top:none;
+  padding:14px 20px; display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap;
+}
+.stat-filter-title {
+  font-size:0.66rem; font-weight:700; letter-spacing:1.5px;
+  color:var(--muted); text-transform:uppercase;
+  padding-top:3px; white-space:nowrap; flex-shrink:0;
+}
+.stat-chips { display:flex; flex-wrap:wrap; gap:6px; flex:1; }
+.chip {
+  font-size:0.70rem; font-weight:600; letter-spacing:.3px;
+  padding:4px 13px; border:1.5px solid var(--border); border-radius:100px;
+  color:var(--sub); cursor:pointer; transition:all .15s; user-select:none;
+  background:var(--card);
+}
+.chip:hover { border-color:var(--blue); color:var(--blue); }
+.chip.selected { border-color:var(--blue); color:var(--blue); background:var(--blue-lt); }
+.chip-all.selected { border-color:var(--sub); color:var(--text); background:#f0f2f5; }
+
+/* ── TABLE VIEW ── */
+.output-wrap {
+  background:var(--card); border:1.5px solid var(--border); border-top:none;
+  border-radius:0 0 12px 12px; overflow:hidden;
+}
+.comparison-table { width:100%; border-collapse:collapse; }
+.comparison-table thead tr { background:#fafbfc; border-bottom:1.5px solid var(--border); }
+.comparison-table th { padding:16px 20px; text-align:left; font-weight:500; }
+.th-stat { font-size:0.68rem; font-weight:700; letter-spacing:1.5px; color:var(--muted); text-transform:uppercase; width:220px; }
+.th-player { text-align:center; min-width:160px; }
+.th-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+.dot-1 { background:var(--p1); } .dot-2 { background:var(--p2); } .dot-3 { background:var(--p3); }
+.th-player-name { font-size:0.90rem; font-weight:700; display:block; margin-top:2px; }
+.th-player-team { font-size:0.70rem; color:var(--sub); font-weight:400; display:block; margin-top:2px; }
+
+.comparison-table tbody tr { border-bottom:1px solid var(--border2); animation:fadeUp .35s both; transition:background .12s; }
+.comparison-table tbody tr:last-child { border-bottom:none; }
+.comparison-table tbody tr:hover { background:#fafbfc; }
+
+td.stat-label { padding:13px 20px; font-size:0.80rem; color:var(--sub); font-weight:400; }
+td.stat-val { text-align:center; padding:13px 16px; }
+.val-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; }
+.val-num { font-size:1.15rem; font-weight:700; color:var(--text); }
+.val-num.best { font-size:1.30rem; }
+.val-bar-track { width:80px; height:5px; background:var(--track); border-radius:100px; overflow:hidden; }
+.val-bar { height:100%; border-radius:100px; transition:width .7s cubic-bezier(.16,1,.3,1); }
+.bar-1 { background:var(--p1); } .bar-2 { background:var(--p2); } .bar-3 { background:var(--p3); }
+.best-badge { font-size:0.60rem; font-weight:700; letter-spacing:.5px; padding:2px 7px; border-radius:4px; }
+.best-badge-1 { background:var(--p1-lt); color:var(--p1); }
+.best-badge-2 { background:var(--p2-lt); color:var(--p2); }
+.best-badge-3 { background:var(--p3-lt); color:var(--p3); }
+
+/* ── RADAR VIEW ── */
+.radar-container {
+  padding:40px 20px; display:flex; flex-direction:column; align-items:center; gap:24px;
+}
+.radar-note { font-size:0.68rem; font-weight:600; color:var(--muted); letter-spacing:.5px; text-align:center; }
+.radar-legend { display:flex; gap:24px; justify-content:center; }
+.radar-legend-item { display:flex; align-items:center; gap:8px; font-size:0.78rem; color:var(--sub); font-weight:500; }
+.radar-legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  padding:60px 20px; text-align:center;
+  color:var(--muted); font-size:0.82rem; font-weight:500;
+}
+
+/* ── LEGEND FOOTER ── */
+.legend {
+  margin-top:20px; display:flex; align-items:center; gap:20px;
+  padding:16px 20px; background:var(--card);
+  border:1.5px solid var(--border); border-radius:12px;
+  flex-wrap:wrap;
+}
+.legend-item { display:flex; align-items:center; gap:8px; font-size:0.76rem; color:var(--sub); font-weight:500; }
+.legend-dot { width:9px; height:9px; border-radius:50%; }
+.legend-note { margin-left:auto; font-size:0.68rem; color:var(--muted); font-weight:600; }
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(5px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-k">K</span>
+    <span class="logo-rest">LEAGUE STATS</span>
+  </div>
+  <span class="season-badge">2024 SEASON</span>
+</header>
+
+<div class="main">
+
+  <div class="page-title">
+    <h1>선수 <span>비교</span> 매트릭스</h1>
+    <p>최대 3명 선택 · 카테고리별 지표 커스터마이징 · 표 / 레이더차트 전환 · K리그1 2024 기준</p>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <div class="select-wrap">
+      <select>
+        <option>2024 시즌</option>
+        <option>2023 시즌</option>
+        <option>2022 시즌</option>
+      </select>
+    </div>
+    <div class="select-wrap">
+      <select>
+        <option>전체 포지션</option>
+        <option>FW — 공격수</option>
+        <option>MF — 미드필더</option>
+        <option>DF — 수비수</option>
+        <option>GK — 골키퍼</option>
+      </select>
+    </div>
+    <div class="select-wrap">
+      <select>
+        <option>전체 팀</option>
+        <option>전북 현대</option>
+        <option>울산 HD</option>
+        <option>수원 FC</option>
+        <option>포항 스틸러스</option>
+        <option>강원 FC</option>
+      </select>
+    </div>
+
+    <!-- 90분당 아이콘 버튼 -->
+    <div class="icon-btn active" id="per90Btn" title="90분당 기준">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+    </div>
+
+    <!-- 달력 아이콘 버튼 -->
+    <div class="icon-btn" id="calBtn" title="시즌 선택">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- PLAYER CARDS -->
+  <div class="player-selector">
+    <div class="player-card active-1">
+      <div class="player-slot-label">▸ PLAYER 01</div>
+      <div class="player-info">
+        <div class="player-avatar avatar-1">조</div>
+        <div>
+          <div class="player-name">조규성</div>
+          <div class="player-meta"><span class="player-pos pos-1">FW</span> 전북 현대 · 28경기</div>
+        </div>
+      </div>
+    </div>
+    <div class="player-card active-2">
+      <div class="player-slot-label">▸ PLAYER 02</div>
+      <div class="player-info">
+        <div class="player-avatar avatar-2">주</div>
+        <div>
+          <div class="player-name">주민규</div>
+          <div class="player-meta"><span class="player-pos pos-2">FW</span> 울산 HD · 31경기</div>
+        </div>
+      </div>
+    </div>
+    <div class="player-card active-3">
+      <div class="player-slot-label">▸ PLAYER 03</div>
+      <div class="player-info">
+        <div class="player-avatar avatar-3">이</div>
+        <div>
+          <div class="player-name">이승우</div>
+          <div class="player-meta"><span class="player-pos pos-3">MF</span> 수원 FC · 30경기</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTROLS ROW -->
+  <div class="controls-row">
+    <div class="category-tabs">
+      <button class="tab-btn active" onclick="changeCategory(this,'attack')">공격</button>
+      <button class="tab-btn" onclick="changeCategory(this,'pass')">패스</button>
+      <button class="tab-btn" onclick="changeCategory(this,'defense')">수비</button>
+    </div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="viewTable" onclick="setView('table')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="1" y="1" width="14" height="3" rx=".5"/><rect x="1" y="6" width="14" height="3" rx=".5"/><rect x="1" y="11" width="14" height="3" rx=".5"/>
+        </svg>
+        표 형식
+      </button>
+      <button class="view-btn" id="viewRadar" onclick="setView('radar')">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+          <polygon points="8,1 15,6 12.5,14 3.5,14 1,6"/>
+          <polygon points="8,4 12,7 10.3,12 5.7,12 4,7"/>
+        </svg>
+        레이더 차트
+      </button>
+    </div>
+  </div>
+
+  <!-- STAT FILTER PANEL -->
+  <div class="stat-filter-panel">
+    <span class="stat-filter-title">지표 선택</span>
+    <div class="stat-chips" id="statChips"></div>
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="output-wrap" id="outputArea"></div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--p1)"></div> 조규성 · 전북 현대</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--p2)"></div> 주민규 · 울산 HD</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--p3)"></div> 이승우 · 수원 FC</div>
+    <span class="legend-note">★ = 세 선수 중 최고값</span>
+  </div>
+
+</div>
+
+<script>
+/* ── DATA ───────────────────────────────────────────────── */
+const DATA = {
+  attack: {
+    label:'공격',
+    rows:[
+      { key:'goal',   stat:'골',          unit:'',  vals:[15,18,9],   radarMax:25  },
+      { key:'assist', stat:'어시스트',     unit:'',  vals:[4,6,11],   radarMax:15  },
+      { key:'shot',   stat:'슈팅',         unit:'',  vals:[78,91,54], radarMax:110 },
+      { key:'shotOT', stat:'유효슈팅',     unit:'',  vals:[38,45,29], radarMax:55  },
+      { key:'drib',   stat:'드리블 시도',   unit:'',  vals:[42,28,97], radarMax:110 },
+      { key:'dribS',  stat:'드리블 성공',   unit:'',  vals:[24,14,61], radarMax:70  },
+      { key:'dribR',  stat:'드리블 성공률', unit:'%', vals:[57.1,50.0,62.9], radarMax:100 },
+      { key:'offside',stat:'오프사이드',   unit:'',  vals:[18,22,7],  radarMax:30  },
+    ]
+  },
+  pass: {
+    label:'패스',
+    rows:[
+      { key:'pass',   stat:'패스 시도',    unit:'',  vals:[412,380,821], radarMax:900 },
+      { key:'passS',  stat:'패스 성공',    unit:'',  vals:[337,298,694], radarMax:780 },
+      { key:'passR',  stat:'패스 성공률',  unit:'%', vals:[81.8,78.4,84.5], radarMax:100 },
+      { key:'keyP',   stat:'키패스',       unit:'',  vals:[22,19,58],  radarMax:70  },
+      { key:'fwdP',   stat:'전방 패스',    unit:'',  vals:[198,176,312], radarMax:360 },
+      { key:'cross',  stat:'크로스 시도',  unit:'',  vals:[31,22,88],  radarMax:100 },
+      { key:'crossS', stat:'크로스 성공',  unit:'',  vals:[10,8,31],   radarMax:40  },
+    ]
+  },
+  defense: {
+    label:'수비',
+    rows:[
+      { key:'tkl',    stat:'태클 시도',    unit:'',  vals:[28,19,61],  radarMax:70  },
+      { key:'tklS',   stat:'태클 성공',    unit:'',  vals:[19,12,44],  radarMax:55  },
+      { key:'tklR',   stat:'태클 성공률',  unit:'%', vals:[67.9,63.2,72.1], radarMax:100 },
+      { key:'int',    stat:'인터셉트',     unit:'',  vals:[12,9,38],   radarMax:45  },
+      { key:'clr',    stat:'클리어런스',   unit:'',  vals:[24,18,41],  radarMax:50  },
+      { key:'aerial', stat:'공중볼 경합',  unit:'',  vals:[88,72,34],  radarMax:100 },
+      { key:'aerialW',stat:'공중볼 성공',  unit:'',  vals:[51,40,17],  radarMax:60  },
+    ]
+  }
+};
+
+const COLORS      = ['#2563eb','#f59e0b','#10b981'];
+const COLORS_ALPHA = ['rgba(37,99,235,','rgba(245,158,11,','rgba(16,185,129,'];
+const BAR_CLS     = ['bar-1','bar-2','bar-3'];
+const BADGE_CLS   = ['best-badge-1','best-badge-2','best-badge-3'];
+
+let currentCategory = 'attack';
+let currentView = 'table';
+let selectedStats = new Set(DATA.attack.rows.map(r => r.key));
+
+/* ── CATEGORY ───────────────────────────────────────────── */
+function changeCategory(btn, cat) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentCategory = cat;
+  selectedStats = new Set(DATA[cat].rows.map(r => r.key));
+  renderChips();
+  renderOutput();
+}
+
+/* ── VIEW ───────────────────────────────────────────────── */
+function setView(v) {
+  currentView = v;
+  document.getElementById('viewTable').classList.toggle('active', v === 'table');
+  document.getElementById('viewRadar').classList.toggle('active', v === 'radar');
+  renderOutput();
+}
+
+/* ── CHIPS ──────────────────────────────────────────────── */
+function renderChips() {
+  const rows = DATA[currentCategory].rows;
+  const allSel = selectedStats.size === rows.length;
+  let html = `<span class="chip chip-all ${allSel?'selected':''}" onclick="toggleAll()">전체</span>`;
+  rows.forEach(r => {
+    html += `<span class="chip ${selectedStats.has(r.key)?'selected':''}" onclick="toggleChip('${r.key}')">${r.stat}</span>`;
+  });
+  document.getElementById('statChips').innerHTML = html;
+}
+
+function toggleChip(key) {
+  if (selectedStats.has(key)) {
+    if (selectedStats.size === 1) return;
+    selectedStats.delete(key);
+  } else { selectedStats.add(key); }
+  renderChips(); renderOutput();
+}
+
+function toggleAll() {
+  const rows = DATA[currentCategory].rows;
+  selectedStats = selectedStats.size === rows.length
+    ? new Set([rows[0].key])
+    : new Set(rows.map(r => r.key));
+  renderChips(); renderOutput();
+}
+
+/* ── OUTPUT ─────────────────────────────────────────────── */
+function renderOutput() {
+  currentView === 'table' ? renderTable() : renderRadar();
+}
+
+/* ── TABLE ──────────────────────────────────────────────── */
+function renderTable() {
+  const rows = DATA[currentCategory].rows.filter(r => selectedStats.has(r.key));
+  if (!rows.length) {
+    document.getElementById('outputArea').innerHTML = '<div class="empty-state">표시할 지표가 없습니다.</div>';
+    return;
+  }
+
+  let html = `
+  <table class="comparison-table">
+    <thead><tr>
+      <th class="th-stat">스탯 항목</th>
+      <th class="th-player">
+        <span class="th-dot dot-1"></span>
+        <span class="th-player-name">조규성</span>
+        <span class="th-player-team">전북 현대</span>
+      </th>
+      <th class="th-player">
+        <span class="th-dot dot-2"></span>
+        <span class="th-player-name">주민규</span>
+        <span class="th-player-team">울산 HD</span>
+      </th>
+      <th class="th-player">
+        <span class="th-dot dot-3"></span>
+        <span class="th-player-name">이승우</span>
+        <span class="th-player-team">수원 FC</span>
+      </th>
+    </tr></thead>
+    <tbody>`;
+
+  rows.forEach((row, ri) => {
+    const max     = Math.max(...row.vals);
+    const bestIdx = row.vals.indexOf(max);
+    html += `<tr style="animation-delay:${.03+ri*.04}s">`;
+    html += `<td class="stat-label">${row.stat}</td>`;
+    row.vals.forEach((v, i) => {
+      const pct    = Math.round((v / max) * 100);
+      const isBest = i === bestIdx;
+      html += `<td class="stat-val"><div class="val-wrap">
+        <span class="val-num${isBest?' best':''}" style="color:${isBest?COLORS[i]:'var(--text)'}">
+          ${v}${row.unit}
+        </span>
+        <div class="val-bar-track">
+          <div class="val-bar ${BAR_CLS[i]}" style="width:0%" data-target="${pct}"></div>
+        </div>
+        ${isBest?`<span class="best-badge ${BADGE_CLS[i]}">★ 최고</span>`:''}
+      </div></td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('outputArea').innerHTML = html;
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('.val-bar').forEach(b => { b.style.width = b.dataset.target + '%'; });
+  }));
+}
+
+/* ── RADAR ──────────────────────────────────────────────── */
+function renderRadar() {
+  const rows = DATA[currentCategory].rows.filter(r => selectedStats.has(r.key));
+  if (rows.length < 3) {
+    document.getElementById('outputArea').innerHTML =
+      '<div class="empty-state">레이더 차트는 지표를 3개 이상 선택해야 합니다.</div>';
+    return;
+  }
+
+  document.getElementById('outputArea').innerHTML = `
+    <div class="radar-container">
+      <canvas id="radarCanvas" width="520" height="480"></canvas>
+      <div class="radar-legend">
+        <div class="radar-legend-item"><div class="radar-legend-dot" style="background:#2563eb"></div>조규성</div>
+        <div class="radar-legend-item"><div class="radar-legend-dot" style="background:#f59e0b"></div>주민규</div>
+        <div class="radar-legend-item"><div class="radar-legend-dot" style="background:#10b981"></div>이승우</div>
+      </div>
+      <div class="radar-note">각 축: 세 선수 중 최고값 기준 비율 · 선택 지표: ${rows.length}개</div>
+    </div>`;
+
+  drawRadar(rows);
+}
+
+function drawRadar(rows) {
+  const canvas = document.getElementById('radarCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2 - 10;
+  const R  = Math.min(W, H) * 0.36;
+  const n  = rows.length;
+  const angles = rows.map((_, i) => (Math.PI * 2 * i / n) - Math.PI / 2);
+
+  ctx.clearRect(0, 0, W, H);
+
+  const normalize = (val, row) => Math.min(val / row.radarMax, 1);
+  const levels = 5;
+
+  /* grid */
+  for (let lv = 1; lv <= levels; lv++) {
+    const r = R * (lv / levels);
+    ctx.beginPath();
+    angles.forEach((a, i) => {
+      const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = lv === levels ? '#d0d5de' : '#e8eaef';
+    ctx.lineWidth   = lv === levels ? 1.5 : 1;
+    ctx.stroke();
+    if (lv % 2 === 0) {
+      ctx.font = '10px Inter, sans-serif';
+      ctx.fillStyle = '#b0b8c8';
+      ctx.textAlign = 'center';
+      ctx.fillText((lv / levels * 100).toFixed(0) + '%', cx + 4, cy - r + 12);
+    }
+  }
+
+  /* spokes + labels */
+  angles.forEach((a, i) => {
+    const x2 = cx + R * Math.cos(a), y2 = cy + R * Math.sin(a);
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x2, y2);
+    ctx.strokeStyle = '#dde1e8'; ctx.lineWidth = 1; ctx.stroke();
+
+    const lx = cx + (R + 34) * Math.cos(a);
+    const ly = cy + (R + 34) * Math.sin(a);
+    ctx.font = '11px Noto Sans KR, sans-serif';
+    ctx.fillStyle = '#6b7585';
+    ctx.textAlign    = Math.abs(Math.cos(a)) < .1 ? 'center' : (Math.cos(a) > 0 ? 'left' : 'right');
+    ctx.textBaseline = ly < cy - 4 ? 'bottom' : (ly > cy + 4 ? 'top' : 'middle');
+    ctx.fillText(rows[i].stat, lx, ly);
+  });
+
+  /* player polygons */
+  [0,1,2].slice().reverse().forEach(pi => {
+    const pts = rows.map((row, i) => {
+      const norm = normalize(row.vals[pi], row);
+      return { x: cx + R * norm * Math.cos(angles[i]), y: cy + R * norm * Math.sin(angles[i]) };
+    });
+    ctx.beginPath();
+    pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    ctx.closePath();
+    ctx.fillStyle   = COLORS_ALPHA[pi] + '0.12)';
+    ctx.fill();
+    ctx.strokeStyle = COLORS[pi];
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+
+    pts.forEach(p => {
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle   = COLORS[pi]; ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke();
+    });
+  });
+}
+
+/* ── ICON BTN TOGGLES ───────────────────────────────────── */
+document.getElementById('per90Btn').addEventListener('click', function() { this.classList.toggle('active'); });
+document.getElementById('calBtn').addEventListener('click', function() { this.classList.toggle('active'); });
+
+/* ── INIT ───────────────────────────────────────────────── */
+renderChips();
+renderOutput();
+</script>
+</body>
+</html>

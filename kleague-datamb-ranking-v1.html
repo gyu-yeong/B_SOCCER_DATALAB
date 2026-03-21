@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K리그 선수 랭킹 — 공중볼 경합 승리</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0d12;
+      --surface:  #111519;
+      --surface2: #181d24;
+      --border:   #1e2530;
+      --text:     #f0f4ff;
+      --muted:    #5a6578;
+      --muted2:   #8a97a8;
+      --accent:   #e8ff3c;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      height: 56px;
+      background: rgba(10,13,18,0.94);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem;
+      letter-spacing: 3px;
+      display: flex;
+      align-items: baseline;
+      gap: 2px;
+    }
+    .logo-k { color: var(--accent); }
+    .logo-rest { color: var(--text); opacity: 0.82; }
+    .season-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      color: var(--muted2);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 2px;
+    }
+
+    /* ── MAIN ── */
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 40px 80px;
+    }
+
+    /* ── TITLE BLOCK ── */
+    .title-block {
+      margin-bottom: 36px;
+    }
+    .metric-label {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.4rem;
+      letter-spacing: 2px;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+    .metric-label span { color: var(--accent); }
+    .meta-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .meta-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 1.5px;
+      color: var(--muted2);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 2px;
+      text-transform: uppercase;
+    }
+    .meta-chip.accent {
+      color: var(--accent);
+      border-color: rgba(232,255,60,0.35);
+      background: rgba(232,255,60,0.06);
+    }
+    .meta-divider {
+      color: var(--border);
+      font-size: 0.8rem;
+    }
+
+    /* ── FILTER BAR ── */
+    .filter-section {
+      margin-bottom: 40px;
+    }
+    .filter-group-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.60rem;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .filter-chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      letter-spacing: 1px;
+      color: var(--muted2);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 6px 16px;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .chip:hover {
+      border-color: var(--muted2);
+      color: var(--text);
+    }
+    .chip.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(232,255,60,0.07);
+    }
+
+    /* ── DIVIDER ── */
+    .section-divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .section-divider hr {
+      flex: 1;
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+    .section-divider span {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.60rem;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* ── RANKING LIST ── */
+    .ranking-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .rank-row {
+      display: grid;
+      grid-template-columns: 36px 1fr auto;
+      align-items: center;
+      gap: 0 16px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: border-color 0.15s;
+    }
+    .rank-row:hover { border-color: #2e3a4a; }
+    .rank-row.top3 { border-color: rgba(232,255,60,0.18); }
+
+    .rank-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-align: right;
+      letter-spacing: 1px;
+    }
+    .rank-row.top3 .rank-num { color: var(--accent); }
+
+    /* player info + bar */
+    .rank-center { display: flex; flex-direction: column; gap: 7px; }
+
+    .player-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .player-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.3px;
+    }
+    .player-team {
+      font-size: 0.72rem;
+      color: var(--muted2);
+      font-weight: 300;
+    }
+    .pos-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.58rem;
+      letter-spacing: 1px;
+      padding: 2px 6px;
+      border-radius: 2px;
+      background: var(--surface2);
+      color: var(--muted2);
+      border: 1px solid var(--border);
+    }
+    .age-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.56rem;
+      color: var(--muted);
+    }
+
+    /* bar track */
+    .bar-track {
+      height: 8px;
+      background: var(--surface2);
+      border-radius: 100px;
+      overflow: hidden;
+      position: relative;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 100px;
+      transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* value */
+    .rank-value {
+      text-align: right;
+      min-width: 48px;
+    }
+    .value-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .value-unit {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.56rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+      margin-top: 2px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    footer p {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.60rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+    footer .watermark {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 0.88rem;
+      letter-spacing: 3px;
+      color: var(--muted);
+    }
+    footer .watermark span { color: var(--accent); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      main { padding: 32px 20px 60px; }
+      header { padding: 0 20px; }
+      .metric-label { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-k">K</span>
+    <span class="logo-rest">LEAGUE STATS</span>
+  </div>
+  <span class="season-badge">2024 SEASON</span>
+</header>
+
+<main>
+
+  <!-- TITLE -->
+  <div class="title-block">
+    <div class="metric-label">공중볼 경합 <span>승리</span></div>
+    <div class="meta-row">
+      <span class="meta-chip accent">23세 이하</span>
+      <span class="meta-chip">90분당</span>
+      <span class="meta-chip">TOP 20</span>
+      <span class="meta-divider">·</span>
+      <span class="meta-chip">K리그1 2024</span>
+    </div>
+  </div>
+
+  <!-- FILTER -->
+  <div class="filter-section">
+    <div class="filter-group-label">포지션 필터</div>
+    <div class="filter-chips" id="posFilter">
+      <div class="chip active" data-pos="ALL">전체</div>
+      <div class="chip" data-pos="FW">FW</div>
+      <div class="chip" data-pos="MF">MF</div>
+      <div class="chip" data-pos="DF">DF</div>
+    </div>
+  </div>
+
+  <!-- DIVIDER -->
+  <div class="section-divider">
+    <hr>
+    <span>RANKING</span>
+    <hr>
+  </div>
+
+  <!-- LIST -->
+  <div class="ranking-list" id="rankingList"></div>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>K리그1 2024 · 최소 900분 이상 출전 선수 기준 · 더미 데이터</p>
+    <div class="watermark"><span>K</span>LEAGUE DATALAB</div>
+  </footer>
+
+</main>
+
+<script>
+  /* ── DATA ──────────────────────────────────────────────── */
+  const ALL_PLAYERS = [
+    { name: "박지민",   team: "전북 현대",      pos: "DF", age: 22, value: 8.42 },
+    { name: "김태양",   team: "울산 HD",        pos: "DF", age: 21, value: 7.91 },
+    { name: "이강민",   team: "수원 FC",        pos: "FW", age: 23, value: 7.24 },
+    { name: "최우진",   team: "포항 스틸러스",  pos: "DF", age: 20, value: 6.83 },
+    { name: "한승규",   team: "성남 FC",        pos: "MF", age: 22, value: 6.51 },
+    { name: "정현우",   team: "인천 유나이티드", pos: "FW", age: 21, value: 6.30 },
+    { name: "박민준",   team: "제주 유나이티드", pos: "DF", age: 23, value: 6.09 },
+    { name: "윤성현",   team: "강원 FC",        pos: "FW", age: 22, value: 5.88 },
+    { name: "김도현",   team: "대구 FC",        pos: "MF", age: 20, value: 5.67 },
+    { name: "이준혁",   team: "전북 현대",      pos: "DF", age: 21, value: 5.43 },
+    { name: "조민혁",   team: "수원 삼성",      pos: "FW", age: 23, value: 5.21 },
+    { name: "박성준",   team: "울산 HD",        pos: "MF", age: 22, value: 5.02 },
+    { name: "김민재",   team: "서울 이랜드",    pos: "DF", age: 21, value: 4.85 },
+    { name: "이동준",   team: "광주 FC",        pos: "FW", age: 20, value: 4.72 },
+    { name: "최성훈",   team: "김천 상무",      pos: "MF", age: 23, value: 4.54 },
+    { name: "정승현",   team: "전남 드래곤즈",  pos: "DF", age: 22, value: 4.38 },
+    { name: "황태민",   team: "포항 스틸러스",  pos: "MF", age: 21, value: 4.20 },
+    { name: "신재원",   team: "인천 유나이티드", pos: "FW", age: 23, value: 4.01 },
+    { name: "백도현",   team: "강원 FC",        pos: "MF", age: 22, value: 3.83 },
+    { name: "이석현",   team: "제주 유나이티드", pos: "DF", age: 20, value: 3.64 },
+    /* reserve (포지션 필터 시 top20 채우기용) */
+    { name: "김영욱",   team: "대구 FC",        pos: "FW", age: 21, value: 3.41 },
+    { name: "최재훈",   team: "성남 FC",        pos: "MF", age: 23, value: 3.22 },
+    { name: "박찬용",   team: "수원 FC",        pos: "DF", age: 22, value: 3.05 },
+    { name: "이재원",   team: "서울 이랜드",    pos: "FW", age: 21, value: 2.88 },
+    { name: "조현택",   team: "광주 FC",        pos: "MF", age: 20, value: 2.71 },
+  ];
+
+  /* ── COLOR UTIL ─────────────────────────────────────────── */
+  // ratio 0(낮음) → 1(높음)
+  // 낮음: #2d5218 (어두운 올리브그린) → 높음: #e8ff3c (라임)
+  function rankColor(ratio) {
+    const r = Math.round(45  + (232 - 45)  * ratio);
+    const g = Math.round(82  + (255 - 82)  * ratio);
+    const b = Math.round(24  + (60  - 24)  * ratio);
+    return { r, g, b, css: `rgb(${r},${g},${b})` };
+  }
+
+  /* ── RENDER ─────────────────────────────────────────────── */
+  function render(posFilter) {
+    const filtered = posFilter === 'ALL'
+      ? ALL_PLAYERS
+      : ALL_PLAYERS.filter(p => p.pos === posFilter);
+
+    const top20 = filtered.slice(0, 20);
+    if (top20.length === 0) {
+      document.getElementById('rankingList').innerHTML =
+        `<p style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.75rem;padding:24px 0">해당 포지션 선수 없음</p>`;
+      return;
+    }
+
+    const maxVal = top20[0].value;
+    const minVal = top20[top20.length - 1].value;
+    const range  = maxVal - minVal || 1;
+
+    const html = top20.map((p, i) => {
+      const ratio   = (p.value - minVal) / range;
+      const col     = rankColor(ratio);
+      const barPct  = (p.value / maxVal) * 88; // max bar = 88% width
+      const isTop3  = i < 3;
+
+      return `
+      <div class="rank-row ${isTop3 ? 'top3' : ''}">
+        <div class="rank-num">${String(i + 1).padStart(2, '0')}</div>
+
+        <div class="rank-center">
+          <div class="player-info">
+            <span class="player-name">${p.name}</span>
+            <span class="player-team">${p.team}</span>
+            <span class="pos-badge">${p.pos}</span>
+            <span class="age-badge">U${p.age}</span>
+          </div>
+          <div class="bar-track">
+            <div class="bar-fill"
+              style="
+                width: ${barPct}%;
+                background: linear-gradient(
+                  to right,
+                  rgba(${col.r},${col.g},${col.b},0.18),
+                  ${col.css}
+                );
+              ">
+            </div>
+          </div>
+        </div>
+
+        <div class="rank-value">
+          <div class="value-num" style="color:${col.css}">${p.value.toFixed(2)}</div>
+          <div class="value-unit">/ 90</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('rankingList').innerHTML = html;
+
+    /* 바 애니메이션: 초기 0 → 실제값 */
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.bar-fill').forEach(bar => {
+        const target = bar.style.width;
+        bar.style.width = '0%';
+        requestAnimationFrame(() => { bar.style.width = target; });
+      });
+    });
+  }
+
+  /* ── FILTER LOGIC ───────────────────────────────────────── */
+  let currentPos = 'ALL';
+
+  document.getElementById('posFilter').addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentPos = chip.dataset.pos;
+    render(currentPos);
+  });
+
+  /* ── INIT ─────────────────────────────────────────────── */
+  render('ALL');
+</script>
+
+</body>
+</html>

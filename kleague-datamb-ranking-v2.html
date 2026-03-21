@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K리그 선수 랭킹 — DATAMB 스타일 v2</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #f5f6f8;
+      --card:       #ffffff;
+      --border:     #e2e5ea;
+      --text:       #141922;
+      --sub:        #6b7585;
+      --muted:      #9aa3b0;
+      --blue-hi:    #1d4ed8;   /* 상위 — 진한 블루 */
+      --blue-lo:    #93c5fd;   /* 하위 — 연한 블루 */
+      --track:      #e8eaef;
+      --select-bg:  #ffffff;
+      --active-btn: #2563eb;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      padding: 48px 0 80px;
+    }
+
+    /* ── CARD WRAPPER ── */
+    .card {
+      max-width: 880px;
+      margin: 0 auto;
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      overflow: hidden;
+      padding: 28px 32px 40px;
+    }
+
+    /* ── FILTER BAR ── */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+
+    .select-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .select-wrap select {
+      appearance: none;
+      background: var(--select-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 36px 8px 14px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .select-wrap select:focus,
+    .select-wrap select:hover {
+      border-color: var(--active-btn);
+    }
+    .select-wrap::after {
+      content: '';
+      position: absolute;
+      right: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid var(--sub);
+      pointer-events: none;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      background: var(--select-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--sub);
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .icon-btn:hover { border-color: var(--active-btn); color: var(--active-btn); }
+    .icon-btn.active {
+      background: var(--active-btn);
+      border-color: var(--active-btn);
+      color: #fff;
+    }
+    .icon-btn svg { width: 16px; height: 16px; }
+
+    /* ── RANKING LIST ── */
+    .ranking-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .rank-row {
+      display: grid;
+      grid-template-columns: 280px 60px 1fr;
+      align-items: center;
+      gap: 0 20px;
+      padding: 11px 4px;
+      border-bottom: 1px solid #f0f1f4;
+      transition: background 0.12s;
+    }
+    .rank-row:last-child { border-bottom: none; }
+    .rank-row:hover { background: #fafbfc; border-radius: 8px; }
+
+    /* left: rank + name */
+    .player-col {
+      display: flex;
+      align-items: baseline;
+      gap: 0;
+      min-width: 0;
+    }
+    .rank-num {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text);
+      min-width: 28px;
+      flex-shrink: 0;
+    }
+    .player-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .player-meta {
+      font-size: 0.78rem;
+      font-weight: 400;
+      color: var(--sub);
+      margin-left: 6px;
+      white-space: nowrap;
+    }
+
+    /* center: value */
+    .value-col {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      text-align: right;
+      letter-spacing: -0.3px;
+    }
+
+    /* right: bar */
+    .bar-col {
+      display: flex;
+      align-items: center;
+    }
+    .bar-track {
+      width: 100%;
+      height: 10px;
+      background: var(--track);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 100px;
+      transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    /* ── FOOTER ── */
+    .data-footer {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .data-footer p {
+      font-size: 0.70rem;
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .data-footer .brand {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--sub);
+      letter-spacing: 1px;
+    }
+    .data-footer .brand span { color: var(--active-btn); }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      padding: 48px 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 0; }
+      .card { border-radius: 0; box-shadow: none; padding: 20px 16px 40px; }
+      .rank-row {
+        grid-template-columns: 1fr 52px;
+        grid-template-rows: auto auto;
+      }
+      .bar-col { grid-column: 1 / -1; }
+      .player-col { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+
+    <div class="select-wrap">
+      <select id="metricSelect">
+        <option value="aerial">공중볼 경합 승리</option>
+        <option value="passes">패스 성공</option>
+        <option value="shots">유효 슈팅</option>
+        <option value="dribbles">드리블 성공</option>
+        <option value="tackles">태클 성공</option>
+      </select>
+    </div>
+
+    <div class="select-wrap">
+      <select id="posSelect">
+        <option value="ALL">모든 포지션</option>
+        <option value="FW">FW — 공격수</option>
+        <option value="MF">MF — 미드필더</option>
+        <option value="DF">DF — 수비수</option>
+      </select>
+    </div>
+
+    <div class="select-wrap">
+      <select id="leagueSelect">
+        <option value="K1">K리그1</option>
+        <option value="K2">K리그2</option>
+        <option value="ALL">전체 K리그</option>
+      </select>
+    </div>
+
+    <div class="select-wrap">
+      <select id="ageSelect">
+        <option value="23">U23 이하</option>
+        <option value="21">U21 이하</option>
+        <option value="25">U25 이하</option>
+        <option value="99">전체</option>
+      </select>
+    </div>
+
+    <!-- per90 toggle -->
+    <div class="icon-btn active" id="per90Btn" title="90분당">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+    </div>
+
+    <!-- calendar icon -->
+    <div class="icon-btn" id="calBtn" title="시즌 선택">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/>
+        <line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+    </div>
+
+  </div>
+
+  <!-- RANKING LIST -->
+  <div class="ranking-list" id="rankingList"></div>
+
+  <!-- FOOTER -->
+  <div class="data-footer">
+    <p>K리그1 2024 · 최소 900분 이상 출전 · 더미 데이터 기준</p>
+    <div class="brand"><span>K</span>LEAGUE DATALAB</div>
+  </div>
+
+</div>
+
+<script>
+/* ── DATA ──────────────────────────────────────────────────────── */
+const DATASETS = {
+  aerial: [
+    { name: "박지민",   team: "전북 현대",      pos: "DF", age: 22, value: 8.42 },
+    { name: "김태양",   team: "울산 HD",        pos: "DF", age: 21, value: 7.91 },
+    { name: "이강민",   team: "수원 FC",        pos: "FW", age: 23, value: 7.24 },
+    { name: "최우진",   team: "포항 스틸러스",  pos: "DF", age: 20, value: 6.83 },
+    { name: "한승규",   team: "성남 FC",        pos: "MF", age: 22, value: 6.51 },
+    { name: "정현우",   team: "인천 유나이티드", pos: "FW", age: 21, value: 6.30 },
+    { name: "박민준",   team: "제주 유나이티드", pos: "DF", age: 23, value: 6.09 },
+    { name: "윤성현",   team: "강원 FC",        pos: "FW", age: 22, value: 5.88 },
+    { name: "김도현",   team: "대구 FC",        pos: "MF", age: 20, value: 5.67 },
+    { name: "이준혁",   team: "전북 현대",      pos: "DF", age: 21, value: 5.43 },
+    { name: "조민혁",   team: "수원 삼성",      pos: "FW", age: 23, value: 5.21 },
+    { name: "박성준",   team: "울산 HD",        pos: "MF", age: 22, value: 5.02 },
+    { name: "김민재",   team: "서울 이랜드",    pos: "DF", age: 21, value: 4.85 },
+    { name: "이동준",   team: "광주 FC",        pos: "FW", age: 20, value: 4.72 },
+    { name: "최성훈",   team: "김천 상무",      pos: "MF", age: 23, value: 4.54 },
+    { name: "정승현",   team: "전남 드래곤즈",  pos: "DF", age: 22, value: 4.38 },
+    { name: "황태민",   team: "포항 스틸러스",  pos: "MF", age: 21, value: 4.20 },
+    { name: "신재원",   team: "인천 유나이티드", pos: "FW", age: 23, value: 4.01 },
+    { name: "백도현",   team: "강원 FC",        pos: "MF", age: 22, value: 3.83 },
+    { name: "이석현",   team: "제주 유나이티드", pos: "DF", age: 20, value: 3.64 },
+    { name: "김영욱",   team: "대구 FC",        pos: "FW", age: 21, value: 3.41 },
+    { name: "최재훈",   team: "성남 FC",        pos: "MF", age: 23, value: 3.22 },
+    { name: "박찬용",   team: "수원 FC",        pos: "DF", age: 22, value: 3.05 },
+    { name: "이재원",   team: "서울 이랜드",    pos: "FW", age: 21, value: 2.88 },
+    { name: "조현택",   team: "광주 FC",        pos: "MF", age: 20, value: 2.71 },
+  ],
+  passes: [
+    { name: "이찬동",   team: "전북 현대",      pos: "MF", age: 22, value: 68.4 },
+    { name: "박재현",   team: "울산 HD",        pos: "MF", age: 21, value: 63.2 },
+    { name: "김준호",   team: "포항 스틸러스",  pos: "DF", age: 23, value: 58.7 },
+    { name: "정민우",   team: "제주 유나이티드", pos: "MF", age: 20, value: 54.1 },
+    { name: "윤재훈",   team: "인천 유나이티드", pos: "DF", age: 22, value: 51.3 },
+    { name: "한지민",   team: "강원 FC",        pos: "MF", age: 21, value: 48.9 },
+    { name: "이성재",   team: "대구 FC",        pos: "FW", age: 23, value: 45.6 },
+    { name: "최현준",   team: "성남 FC",        pos: "MF", age: 20, value: 43.2 },
+    { name: "박진우",   team: "수원 FC",        pos: "DF", age: 22, value: 41.7 },
+    { name: "김승민",   team: "광주 FC",        pos: "MF", age: 21, value: 39.4 },
+    { name: "이현우",   team: "김천 상무",      pos: "DF", age: 23, value: 37.8 },
+    { name: "조성민",   team: "서울 이랜드",    pos: "MF", age: 22, value: 36.2 },
+    { name: "박도현",   team: "전남 드래곤즈",  pos: "FW", age: 20, value: 34.5 },
+    { name: "한재원",   team: "전북 현대",      pos: "MF", age: 21, value: 32.9 },
+    { name: "최민재",   team: "울산 HD",        pos: "DF", age: 23, value: 31.4 },
+    { name: "김태준",   team: "포항 스틸러스",  pos: "MF", age: 22, value: 29.8 },
+    { name: "이재민",   team: "수원 삼성",      pos: "FW", age: 21, value: 28.3 },
+    { name: "박현수",   team: "인천 유나이티드", pos: "MF", age: 20, value: 26.7 },
+    { name: "정우진",   team: "강원 FC",        pos: "DF", age: 23, value: 25.1 },
+    { name: "윤민준",   team: "제주 유나이티드", pos: "MF", age: 22, value: 23.6 },
+    { name: "황도연",   team: "대구 FC",        pos: "FW", age: 21, value: 22.0 },
+    { name: "신재훈",   team: "성남 FC",        pos: "MF", age: 23, value: 20.5 },
+  ],
+  shots: [
+    { name: "이승우",   team: "수원 FC",        pos: "FW", age: 23, value: 3.82 },
+    { name: "조규성",   team: "전북 현대",      pos: "FW", age: 22, value: 3.45 },
+    { name: "김건우",   team: "울산 HD",        pos: "FW", age: 21, value: 3.12 },
+    { name: "박태준",   team: "포항 스틸러스",  pos: "FW", age: 20, value: 2.98 },
+    { name: "최민혁",   team: "강원 FC",        pos: "MF", age: 23, value: 2.74 },
+    { name: "정재원",   team: "인천 유나이티드", pos: "FW", age: 22, value: 2.61 },
+    { name: "한성민",   team: "대구 FC",        pos: "MF", age: 21, value: 2.49 },
+    { name: "이준우",   team: "제주 유나이티드", pos: "FW", age: 20, value: 2.38 },
+    { name: "박민성",   team: "성남 FC",        pos: "MF", age: 23, value: 2.27 },
+    { name: "김재훈",   team: "수원 삼성",      pos: "FW", age: 22, value: 2.16 },
+    { name: "윤창현",   team: "광주 FC",        pos: "FW", age: 21, value: 2.05 },
+    { name: "조현준",   team: "김천 상무",      pos: "MF", age: 20, value: 1.94 },
+    { name: "이민재",   team: "서울 이랜드",    pos: "FW", age: 23, value: 1.83 },
+    { name: "박성민",   team: "전남 드래곤즈",  pos: "MF", age: 22, value: 1.72 },
+    { name: "한도현",   team: "전북 현대",      pos: "FW", age: 21, value: 1.61 },
+    { name: "최재현",   team: "울산 HD",        pos: "MF", age: 20, value: 1.50 },
+    { name: "김준민",   team: "포항 스틸러스",  pos: "FW", age: 23, value: 1.39 },
+    { name: "이창현",   team: "강원 FC",        pos: "MF", age: 22, value: 1.28 },
+  ],
+  dribbles: [
+    { name: "엄원상",   team: "울산 HD",        pos: "FW", age: 23, value: 5.61 },
+    { name: "이동경",   team: "전북 현대",      pos: "MF", age: 22, value: 5.03 },
+    { name: "박진섭",   team: "광주 FC",        pos: "FW", age: 21, value: 4.78 },
+    { name: "김민준",   team: "수원 FC",        pos: "MF", age: 20, value: 4.42 },
+    { name: "최진수",   team: "인천 유나이티드", pos: "FW", age: 23, value: 4.17 },
+    { name: "이서준",   team: "포항 스틸러스",  pos: "MF", age: 22, value: 3.91 },
+    { name: "조찬호",   team: "강원 FC",        pos: "FW", age: 21, value: 3.66 },
+    { name: "박인혁",   team: "대구 FC",        pos: "MF", age: 20, value: 3.40 },
+    { name: "한재훈",   team: "제주 유나이티드", pos: "FW", age: 23, value: 3.15 },
+    { name: "김성준",   team: "성남 FC",        pos: "MF", age: 22, value: 2.89 },
+    { name: "이태훈",   team: "수원 삼성",      pos: "FW", age: 21, value: 2.64 },
+    { name: "박지훈",   team: "김천 상무",      pos: "MF", age: 20, value: 2.38 },
+    { name: "최현수",   team: "서울 이랜드",    pos: "FW", age: 23, value: 2.13 },
+    { name: "윤민혁",   team: "전남 드래곤즈",  pos: "MF", age: 22, value: 1.87 },
+    { name: "조민재",   team: "광주 FC",        pos: "FW", age: 21, value: 1.62 },
+  ],
+  tackles: [
+    { name: "이기제",   team: "전북 현대",      pos: "DF", age: 23, value: 4.91 },
+    { name: "박지수",   team: "울산 HD",        pos: "DF", age: 22, value: 4.53 },
+    { name: "김주성",   team: "포항 스틸러스",  pos: "MF", age: 21, value: 4.17 },
+    { name: "최준혁",   team: "강원 FC",        pos: "DF", age: 20, value: 3.84 },
+    { name: "한승민",   team: "인천 유나이티드", pos: "MF", age: 23, value: 3.51 },
+    { name: "이재성",   team: "수원 FC",        pos: "DF", age: 22, value: 3.19 },
+    { name: "박민우",   team: "제주 유나이티드", pos: "MF", age: 21, value: 2.86 },
+    { name: "김현민",   team: "대구 FC",        pos: "DF", age: 20, value: 2.54 },
+    { name: "조성준",   team: "성남 FC",        pos: "MF", age: 23, value: 2.21 },
+    { name: "윤태준",   team: "광주 FC",        pos: "DF", age: 22, value: 1.88 },
+    { name: "이민혁",   team: "김천 상무",      pos: "MF", age: 21, value: 1.56 },
+    { name: "박도준",   team: "서울 이랜드",    pos: "DF", age: 20, value: 1.23 },
+  ],
+};
+
+/* ── STATE ─────────────────────────────────────────────────────── */
+let state = { metric: 'aerial', pos: 'ALL', age: 23 };
+
+/* ── COLOR UTIL ─────────────────────────────────────────────────── */
+// ratio 0(낮음)→1(높음): #93c5fd(연블루) → #1d4ed8(진블루)
+function barColor(ratio) {
+  const r = Math.round(147 + (29  - 147) * ratio);
+  const g = Math.round(197 + (78  - 197) * ratio);
+  const b = Math.round(253 + (216 - 253) * ratio);
+  return `rgb(${r},${g},${b})`;
+}
+
+/* ── RENDER ─────────────────────────────────────────────────────── */
+function render() {
+  const list = document.getElementById('rankingList');
+  const raw  = DATASETS[state.metric] || [];
+
+  const filtered = raw
+    .filter(p => state.pos === 'ALL' || p.pos === state.pos)
+    .filter(p => p.age <= state.age)
+    .slice(0, 20);
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty">해당 조건의 선수 데이터가 없습니다</div>`;
+    return;
+  }
+
+  const maxVal = filtered[0].value;
+  const minVal = filtered[filtered.length - 1].value;
+  const range  = maxVal - minVal || 1;
+
+  list.innerHTML = filtered.map((p, i) => {
+    const ratio  = (p.value - minVal) / range;
+    const color  = barColor(ratio);
+    const barPct = (p.value / maxVal) * 92;
+    const metricLabel = document.getElementById('metricSelect').options[document.getElementById('metricSelect').selectedIndex].text;
+
+    return `
+    <div class="rank-row">
+      <div class="player-col">
+        <span class="rank-num">${i + 1}.</span>
+        <span class="player-name">${p.name}</span>
+        <span class="player-meta">(${p.team}, ${p.age})</span>
+      </div>
+      <div class="value-col">${p.value.toFixed(2)}</div>
+      <div class="bar-col">
+        <div class="bar-track">
+          <div class="bar-fill" data-target="${barPct}" style="width:0%;background:${color}"></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // 애니메이션
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      list.querySelectorAll('.bar-fill').forEach(bar => {
+        bar.style.width = bar.dataset.target + '%';
+      });
+    });
+  });
+}
+
+/* ── EVENTS ─────────────────────────────────────────────────────── */
+document.getElementById('metricSelect').addEventListener('change', e => {
+  state.metric = e.target.value;
+  render();
+});
+document.getElementById('posSelect').addEventListener('change', e => {
+  state.pos = e.target.value;
+  render();
+});
+document.getElementById('ageSelect').addEventListener('change', e => {
+  state.age = parseInt(e.target.value);
+  render();
+});
+document.getElementById('per90Btn').addEventListener('click', function() {
+  this.classList.toggle('active');
+});
+document.getElementById('calBtn').addEventListener('click', function() {
+  this.classList.toggle('active');
+});
+
+/* ── INIT ─────────────────────────────────────────────────────── */
+render();
+</script>
+
+</body>
+</html>
