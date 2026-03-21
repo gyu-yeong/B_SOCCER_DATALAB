@@ -127,14 +127,46 @@ def create_driver() -> uc.Chrome:
 
 
 def dismiss_popups(driver: uc.Chrome) -> None:
-    """쿠키 동의 배너 및 오버레이 광고를 자동으로 닫는다."""
-    # 1. Transfermarkt 쿠키 동의 버튼 (OneTrust 계열)
+    """
+    Transfermarkt 쿠키/광고 동의 팝업을 자동으로 닫는다.
+    - contentpass 동의창 ("Accept & continue") — 최초 접속 시 표시
+    - OneTrust 계열 쿠키 배너 (일부 국가 버전)
+    - 일반 오버레이 모달
+    """
+    # 1. contentpass "Accept & continue" 버튼 (Transfermarkt 실제 팝업)
+    #    JavaScript로 텍스트 기반 탐색 → 가장 신뢰도 높음
+    try:
+        driver.execute_script("""
+            const buttons = document.querySelectorAll('button');
+            for (const btn of buttons) {
+                if (btn.textContent.trim().includes('Accept & continue') ||
+                    btn.textContent.trim().includes('Accept all') ||
+                    btn.textContent.trim().includes('Akzeptieren')) {
+                    btn.click();
+                    break;
+                }
+            }
+        """)
+        time.sleep(1.5)
+        # 팝업이 사라졌는지 확인 (body 배경 오버레이 기준)
+        try:
+            driver.find_element(By.CSS_SELECTOR, ".sp_message_container, .message-container")
+            # 아직 있으면 CSS 셀렉터로 재시도
+        except Exception:
+            print("  [팝업] contentpass 동의 완료 (JS)")
+            return
+    except Exception:
+        pass
+
+    # 2. CSS 셀렉터 순차 시도 (OneTrust, SourcePoint, contentpass 변형)
     CONSENT_SELECTORS = [
-        "button.js-accept-all-button",
-        "#onetrust-accept-btn-handler",
-        "button[title='Accept All']",
-        "a.btn-ok",
+        ".sp_choice_type_11",                    # SourcePoint "Accept & continue"
+        ".sp_choice_type_ACCEPT_ALL",            # SourcePoint 변형
+        "button[title='Accept & continue']",
+        "button.js-accept-all-button",           # Transfermarkt 구버전
+        "#onetrust-accept-btn-handler",          # OneTrust
         "button[data-testid='uc-accept-all-button']",
+        "a.btn-ok",
     ]
     for sel in CONSENT_SELECTORS:
         try:
@@ -142,17 +174,16 @@ def dismiss_popups(driver: uc.Chrome) -> None:
                 EC.element_to_be_clickable((By.CSS_SELECTOR, sel))
             )
             btn.click()
-            time.sleep(1)
-            print("  [팝업] 쿠키 동의 클릭 완료")
-            break
+            time.sleep(1.5)
+            print(f"  [팝업] 동의 클릭 완료 ({sel})")
+            return
         except Exception:
             continue
 
-    # 2. 오버레이/모달 닫기 (X 버튼 패턴)
+    # 3. 일반 오버레이 닫기 (X 버튼)
     CLOSE_SELECTORS = [
         "div.modal button.close",
         "div[class*='overlay'] button[class*='close']",
-        "a[class*='close']",
         "button[class*='close']",
     ]
     for sel in CLOSE_SELECTORS:

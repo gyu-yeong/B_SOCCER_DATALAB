@@ -83,13 +83,43 @@ def create_driver() -> uc.Chrome:
 
 
 def dismiss_popups(driver: uc.Chrome) -> None:
-    """쿠키 동의 배너 및 오버레이 광고를 자동으로 닫는다."""
+    """
+    Transfermarkt 쿠키/광고 동의 팝업을 자동으로 닫는다.
+    - contentpass 동의창 ("Accept & continue") — 최초 접속 시 표시
+    - OneTrust 계열 쿠키 배너 (일부 국가 버전)
+    - 일반 오버레이 모달
+    """
+    # 1. contentpass "Accept & continue" 버튼 (JS 텍스트 기반 탐색)
+    try:
+        driver.execute_script("""
+            const buttons = document.querySelectorAll('button');
+            for (const btn of buttons) {
+                if (btn.textContent.trim().includes('Accept & continue') ||
+                    btn.textContent.trim().includes('Accept all') ||
+                    btn.textContent.trim().includes('Akzeptieren')) {
+                    btn.click();
+                    break;
+                }
+            }
+        """)
+        time.sleep(1.5)
+        try:
+            driver.find_element(By.CSS_SELECTOR, ".sp_message_container, .message-container")
+        except Exception:
+            print("  [팝업] contentpass 동의 완료 (JS)")
+            return
+    except Exception:
+        pass
+
+    # 2. CSS 셀렉터 순차 시도
     CONSENT_SELECTORS = [
+        ".sp_choice_type_11",
+        ".sp_choice_type_ACCEPT_ALL",
+        "button[title='Accept & continue']",
         "button.js-accept-all-button",
         "#onetrust-accept-btn-handler",
-        "button[title='Accept All']",
-        "a.btn-ok",
         "button[data-testid='uc-accept-all-button']",
+        "a.btn-ok",
     ]
     for sel in CONSENT_SELECTORS:
         try:
@@ -97,16 +127,16 @@ def dismiss_popups(driver: uc.Chrome) -> None:
                 EC.element_to_be_clickable((By.CSS_SELECTOR, sel))
             )
             btn.click()
-            time.sleep(1)
-            print("  [팝업] 쿠키 동의 클릭 완료")
-            break
+            time.sleep(1.5)
+            print(f"  [팝업] 동의 클릭 완료 ({sel})")
+            return
         except Exception:
             continue
 
+    # 3. 일반 오버레이 닫기
     CLOSE_SELECTORS = [
         "div.modal button.close",
         "div[class*='overlay'] button[class*='close']",
-        "a[class*='close']",
         "button[class*='close']",
     ]
     for sel in CLOSE_SELECTORS:
