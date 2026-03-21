@@ -1,36 +1,42 @@
 # B_Soccer_DataLab
 
-K리그 데이터 분석 플랫폼
+> 샘플 웹 디자인은 https://gyu-yeong.github.io/B_SOCCER_DATALAB/ 에서 확인할 수 있습니다.
 
-## 개발 환경 설정
-```bash
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-## 실행
-```bash
-streamlit run app/main.py
-```
-```
-**4. 저장**
+K리그 선수 비교 매트릭스 웹 서비스
 
 ---
 
-## ✅ 완료 확인
+## 프로젝트 소개
 
-VSCode Explorer에서 이렇게 보이면 성공:
-```
-b_soccer_datalab/
-├── .env              ← 회색 글씨
-├── .gitignore        ← 회색 글씨
-├── README.md
-├── requirements.txt
-├── venv/             ← 흐릿하게 표시
-├── data/
-│   ├── raw/
-│   └── processed/
-├── database/
-├── scripts/
-└── app/
+**b_soccer_datalab**은 K리그 팬들이 선수 기록을 직관적·시각적으로 비교하고 SNS에 공유할 수 있는 인터랙티브 웹 서비스입니다.
+
+Squawka의 Comparison Matrix에서 영감을 얻어, 복잡한 숫자 테이블 대신 **비주얼 카드·바 차트·Total/Per90 토글** 방식으로 K리그 선수 2~3명의 핵심 스탯을 나란히 보여줍니다.
+
+에펨코리아·네이버 카페·디시인사이드 축구 갤러리 등 팬 커뮤니티에서 벌어지는 선수 비교 논쟁을 데이터 기반으로 해결하고, 시각화 이미지를 카카오·트위터·인스타에 손쉽게 공유할 수 있는 환경을 제공합니다.
+
+## 핵심 기능
+
+- **선수 비교 매트릭스** — 최대 3인 동시 비교, Squawka 스타일 카드 UI
+- **Total / Per90 토글** — 누적 스탯과 90분 환산 효율 지표를 탭 하나로 전환
+- **팀·시즌 드롭다운** — 이적 전후 동일 선수의 다른 시즌 비교 가능
+- **SHARE 이미지 생성** — 1-click으로 카카오·트위터·인스타 최적화 이미지 자동 생성
+- **팬 보팅** — '이 비교에서 누가 더 낫나요?' 커뮤니티 투표 기능
+- **EDIT STATS** — 표시할 스탯 항목 직접 커스터마이징 (최대 10개)
+- **K리그 특화 스탯** — 전방압박 성공률, 세트피스 기여도 등 국내 전용 지표
+
+## 데이터 커버리지
+
+- K리그 1·2부 통합 (2020 시즌 ~)
+- 선수 2,000명 이상 / 팀 26개
+- 선수 1인당 70개+ 지표 (공격·패스·수비·피지컬·K리그 특화)
+
+## 기술 스택
+
+| 영역 | 스택 |
+|------|------|
+| 프론트엔드 | Next.js 14 (App Router) + TypeScript |
+| 시각화 | D3.js + Framer Motion |
+| 백엔드 | FastAPI (Python) |
+| DB | PostgreSQL + Redis |
+| ETL | GitHub Actions 스케줄러 |
+| 인프라 | Vercel + Railway + Cloudflare CDN |
