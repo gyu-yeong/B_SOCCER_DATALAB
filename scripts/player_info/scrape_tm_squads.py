@@ -129,48 +129,18 @@ def create_driver() -> uc.Chrome:
 def dismiss_popups(driver: uc.Chrome) -> None:
     """
     Transfermarkt 쿠키/광고 동의 팝업을 자동으로 닫는다.
-    - contentpass 동의창 ("Accept & continue") — 최초 접속 시 표시
-    - OneTrust 계열 쿠키 배너 (일부 국가 버전)
-    - 일반 오버레이 모달
+    실제 확인된 셀렉터:
+      - #notice .row-consent button  (contentpass "Accept & continue")
+      - XPath: //*[@id="notice"]/div[3]/div[1]/div/button
     """
-    # 1. contentpass "Accept & continue" 버튼 (Transfermarkt 실제 팝업)
-    #    JavaScript로 텍스트 기반 탐색 → 가장 신뢰도 높음
-    try:
-        driver.execute_script("""
-            const buttons = document.querySelectorAll('button');
-            for (const btn of buttons) {
-                if (btn.textContent.trim().includes('Accept & continue') ||
-                    btn.textContent.trim().includes('Accept all') ||
-                    btn.textContent.trim().includes('Akzeptieren')) {
-                    btn.click();
-                    break;
-                }
-            }
-        """)
-        time.sleep(1.5)
-        # 팝업이 사라졌는지 확인 (body 배경 오버레이 기준)
-        try:
-            driver.find_element(By.CSS_SELECTOR, ".sp_message_container, .message-container")
-            # 아직 있으면 CSS 셀렉터로 재시도
-        except Exception:
-            print("  [팝업] contentpass 동의 완료 (JS)")
-            return
-    except Exception:
-        pass
-
-    # 2. CSS 셀렉터 순차 시도 (OneTrust, SourcePoint, contentpass 변형)
-    CONSENT_SELECTORS = [
-        ".sp_choice_type_11",                    # SourcePoint "Accept & continue"
-        ".sp_choice_type_ACCEPT_ALL",            # SourcePoint 변형
-        "button[title='Accept & continue']",
-        "button.js-accept-all-button",           # Transfermarkt 구버전
-        "#onetrust-accept-btn-handler",          # OneTrust
-        "button[data-testid='uc-accept-all-button']",
-        "a.btn-ok",
+    # 1. 실제 확인된 셀렉터 (최우선)
+    CONFIRMED_SELECTORS = [
+        "#notice .row-consent button",
+        "#notice > div.message-component.message-row.row-choice > div.message-component.message-row.row-consent > div > button",
     ]
-    for sel in CONSENT_SELECTORS:
+    for sel in CONFIRMED_SELECTORS:
         try:
-            btn = WebDriverWait(driver, 3).until(
+            btn = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, sel))
             )
             btn.click()
@@ -180,20 +150,28 @@ def dismiss_popups(driver: uc.Chrome) -> None:
         except Exception:
             continue
 
-    # 3. 일반 오버레이 닫기 (X 버튼)
-    CLOSE_SELECTORS = [
-        "div.modal button.close",
-        "div[class*='overlay'] button[class*='close']",
-        "button[class*='close']",
-    ]
-    for sel in CLOSE_SELECTORS:
-        try:
-            btn = driver.find_element(By.CSS_SELECTOR, sel)
-            if btn.is_displayed():
-                btn.click()
-                time.sleep(0.5)
-        except Exception:
-            pass
+    # 2. XPath 시도
+    try:
+        btn = WebDriverWait(driver, 3).until(
+            EC.element_to_be_clickable((By.XPATH, '//*[@id="notice"]/div[3]/div[1]/div/button'))
+        )
+        btn.click()
+        time.sleep(1.5)
+        print("  [팝업] 동의 클릭 완료 (XPath)")
+        return
+    except Exception:
+        pass
+
+    # 3. JS 직접 클릭 (iframe 등 접근 제한 우회)
+    try:
+        driver.execute_script(
+            'document.querySelector("#notice > div.message-component.message-row.row-choice > div.message-component.message-row.row-consent > div > button").click();'
+        )
+        time.sleep(1.5)
+        print("  [팝업] 동의 클릭 완료 (JS querySelector)")
+        return
+    except Exception:
+        pass
 
 
 # ─────────────────────────────────────────────
