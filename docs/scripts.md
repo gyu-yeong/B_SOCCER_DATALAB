@@ -62,7 +62,95 @@ python scripts/player_info/map_foreign_korean_names.py
 
 ---
 
-### 3. `import_korean_names.py` — 한국 음차명 DB 반영
+### 3. `scrape_tm_squads.py` — Transfermarkt 스쿼드 자동 스크래핑
+
+#### 역할
+Transfermarkt에서 K League 1·2 전 팀의 스쿼드 상세 정보를 자동 수집합니다.
+CLI 인자로 시즌과 리그를 지정하면 CSV 백업 저장 및 `player_master` DB 직접 적재까지 완료합니다.
+
+#### 실행 방법
+```bash
+# 프로젝트 루트에서 실행
+python scripts/player_info/scrape_tm_squads.py --season 2025
+python scripts/player_info/scrape_tm_squads.py --season 2024 --league kl1
+python scripts/player_info/scrape_tm_squads.py --season 2025 --league kl2
+```
+
+#### 옵션
+| 인자 | 필수 | 설명 |
+|------|------|------|
+| `--season` | ✅ | 수집할 시즌 연도 (예: 2025) |
+| `--league` | ❌ | `kl1` / `kl2` / `all` (기본값: `all`) |
+
+#### 탐색 전략 (URL 직접 구성, 2단계)
+1. **대회 페이지** → 팀 slug·tm_id 동적 수집
+   `https://www.transfermarkt.com/x/startseite/wettbewerb/{RSK|RSK2}/saison_id/{season}`
+2. **스쿼드 페이지** → 선수별 상세 정보 파싱 (Detailed 뷰 자동 활성화)
+   `https://www.transfermarkt.com/{slug}/kader/verein/{tm_id}/saison_id/{season}/plus/1`
+
+#### 수집 컬럼
+`jersey_number`, `name_original`, `position`, `position_detail`, `birth_date`,
+`citizenship`, `height_cm`, `foot`, `joined`, `signed_from`, `contract_until`,
+`market_value_eur`, `team_name`, `league`, `season`
+
+#### 입출력
+| 구분 | 경로 |
+|---|---|
+| 입력 | transfermarkt.com (웹) |
+| 출력 | `data/raw/TM_squads_{season}_KL1.csv` |
+| 출력 | `data/raw/TM_squads_{season}_KL2.csv` |
+| 출력 | `database/kleague1.db` → `player_master` 테이블 |
+
+#### 특이사항
+- `undetected_chromedriver` 사용 (봇 탐지 우회), 팀 간 4~8초 랜덤 딜레이
+- 선수 셀 1행 안에 이름·포지션 2줄 구조 → `position`, `position_detail` 파생 컬럼 분리
+- `player_master` UPSERT: 기존 선수는 값 업데이트, 신규 선수는 INSERT
+- `player_master`에 `foot`, `signed_from`, `contract_until` 컬럼을 자동 추가 (ALTER TABLE)
+- `jersey_number`는 시즌마다 달라지므로 CSV에만 보존, DB 적재 제외
+- `is_korean`: `citizenship`에 "Korea" 포함 여부로 판정 (기존 로직 동일)
+
+---
+
+### 4. `backfill_tm_player_id.py` — 기존 player_master에 tm_player_id 백필
+
+#### 역할
+`scrape_tm_squads.py` 도입 이전에 수동 CSV로 적재된 기존 `player_master` 레코드의
+`tm_player_id`를 Transfermarkt kader 페이지 스크래핑으로 역으로 채운다.
+이름 표기 차이(한글명 vs 영문명)에 의존하지 않고 **생년월일 기준**으로 매칭한다.
+
+#### 실행 방법
+```bash
+# 2026시즌 기준으로 전체 백필 (첫 실행 시 권장)
+python scripts/player_info/backfill_tm_player_id.py --season 2026
+
+# K League 1만
+python scripts/player_info/backfill_tm_player_id.py --season 2026 --league kl1
+```
+
+#### 매칭 전략 (3단계)
+| 순위 | 조건 | 처리 |
+|------|------|------|
+| 1순위 | `birth_date` 정확 일치 + DB 내 유일 후보 | 자동 UPDATE |
+| 2순위 | `birth_date` 일치 + 복수 후보 → `current_club` 유사도 필터 후 1명 | 자동 UPDATE |
+| 3순위 | 매칭 실패 | `data/raw/unmatched_tm_id_{season}.csv` 출력 (수동 처리) |
+
+#### 입출력
+| 구분 | 경로 |
+|---|---|
+| 입력 | transfermarkt.com kader 페이지 (웹) |
+| 입력 | `database/kleague1.db` → `player_master` (tm_player_id IS NULL) |
+| 출력 | `database/kleague1.db` → `player_master.tm_player_id` UPDATE |
+| 출력 | `data/raw/unmatched_tm_id_{season}.csv` (수동 처리 대상) |
+
+#### 특이사항
+- `tm_player_id` 컬럼 없으면 자동 `ALTER TABLE` (멱등 실행 가능)
+- 이미 `tm_player_id`가 채워진 레코드는 건드리지 않음
+- 같은 생년월일 선수가 여러 명일 때: `current_club` 유사도로 2차 필터
+- 수동 처리: `unmatched_tm_id_{season}.csv` 확인 후 `UPDATE player_master SET tm_player_id = '...' WHERE master_id = ...`
+
+---
+
+### 5. `import_korean_names.py` — 한국 음차명 DB 반영
 
 #### 역할
 `map_foreign_korean_names.py`가 생성한 CSV(또는 수동 보완 후)를 읽어 `player_master.player_name`을 업데이트합니다.

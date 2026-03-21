@@ -41,6 +41,10 @@ erDiagram
         TEXT    current_club
         TEXT    joined
         INTEGER market_value_eur
+        TEXT    foot
+        TEXT    signed_from
+        TEXT    contract_until
+        TEXT    tm_player_id
     }
 
     players {
@@ -198,7 +202,7 @@ UNIQUE: `(competition_id, round_number, home_team_id, away_team_id)`
 
 ---
 
-### `player_master` — 선수 인물 원장 (2026시즌 Transfermarkt 기준)
+### `player_master` — 선수 인물 원장 (Transfermarkt 기준)
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
 | master_id | INTEGER PK | 자동 증가 |
@@ -211,13 +215,18 @@ UNIQUE: `(competition_id, round_number, home_team_id, away_team_id)`
 | is_korean | INTEGER | 1: 한국인 / 0: 외국인 |
 | position | TEXT | 포지션 대분류 (Attack / Midfield / Defender / Goalkeeper) |
 | position_detail | TEXT | 포지션 상세 (Right Winger 등) |
-| current_club | TEXT | 현재 소속 클럽 (2026시즌 기준 영문) |
+| current_club | TEXT | 현재 소속 클럽 (영문) |
 | joined | TEXT | 현재 클럽 합류일 (YYYY-MM-DD) |
 | market_value_eur | INTEGER | 시장가치 (유로) |
+| foot | TEXT | 주발 (right / left / both) |
+| signed_from | TEXT | 영입 출처 클럽명 |
+| contract_until | TEXT | 계약 만료일 (원문 그대로) |
+| tm_player_id | TEXT | Transfermarkt 선수 고유 ID (시즌·이적·표기 변경에 불변) |
 
 UNIQUE: `(name_original, birth_date)`
 
 > **설계 의도**: 1인 = 1행. `birth_date`가 동명이인 구분 키. 외국인 한국 음차명은 K리그 데이터포털 선수인적정보.xlsx 기준으로 매핑.
+> `foot`, `signed_from`, `contract_until`, `tm_player_id` 컬럼은 `scrape_tm_squads.py` 또는 `backfill_tm_player_id.py` 실행 시 자동 추가됨 (ALTER TABLE).
 
 ---
 

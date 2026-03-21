@@ -4,6 +4,43 @@
 
 ---
 
+## [0.5.4] - 2026-03-21
+
+### Added
+- **`scripts/player_info/backfill_tm_player_id.py` 신규 생성** — 기존 player_master 레코드 tm_player_id 백필
+  - 이름 표기 차이(한글 vs 영문)에 의존하지 않고 **생년월일 기준** 매칭
+  - 1순위: birth_date 유일 매칭 → 자동 UPDATE
+  - 2순위: birth_date 복수 후보 → current_club 유사도 필터 후 자동 UPDATE
+  - 3순위: 미해소 → `data/raw/unmatched_tm_id_{season}.csv` 저장 (수동 처리)
+  - `tm_player_id` 컬럼 없으면 자동 ALTER TABLE
+
+### Changed
+- **`scripts/player_info/scrape_tm_squads.py` 수정**
+  - 선수 링크(`/spieler/{id}`)에서 `tm_player_id` 추출 추가
+  - UPSERT SQL에 `tm_player_id` 포함 (COALESCE: 기존값 우선)
+  - `alter_table_if_needed()`에 `tm_player_id` 컬럼 추가
+- **`docs/schema.md`** — `player_master` ERD 및 컬럼 명세에 `tm_player_id` 반영
+- **`docs/scripts.md`** — `backfill_tm_player_id.py` 항목 추가
+
+---
+
+## [0.5.3] - 2026-03-21
+
+### Added
+- **`scripts/player_info/scrape_tm_squads.py` 신규 생성** — Transfermarkt K리그 스쿼드 자동 스크래핑
+  - CLI 인자 `--season`(필수), `--league kl1|kl2|all`(기본: all)으로 수집 대상 지정
+  - URL 직접 구성 방식: 대회 페이지 팀 목록 동적 수집 → 팀별 `/kader/…/plus/1` 접근 (Detailed 뷰 자동)
+  - `undetected_chromedriver` + 4~8초 랜덤 딜레이로 봇 탐지 우회
+  - 선수 셀 2줄 구조(이름+포지션) 파싱 → `position`, `position_detail` 파생 컬럼 분리
+  - CSV 백업 저장 (`data/raw/TM_squads_{season}_KL1|KL2.csv`) + `player_master` UPSERT 동시 실행
+  - `player_master` 신규 컬럼 자동 추가: `foot`, `signed_from`, `contract_until`
+
+### Changed
+- **`docs/schema.md`** — `player_master` 테이블에 `foot`, `signed_from`, `contract_until` 컬럼 추가 반영
+- **`docs/scripts.md`** — `scrape_tm_squads.py` 항목 추가
+
+---
+
 ## [0.5.2] - 2026-03-21
 
 ### Changed
