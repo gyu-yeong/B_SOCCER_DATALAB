@@ -90,10 +90,12 @@ python scripts/player_info/scrape_tm_squads.py --season 2025 --league kl2
 
 > **saison_id 공식**: `saison_id = 실제시즌 - 2` (K리그 TM 표기 규칙, 예: 2026시즌 → saison_id=2024)
 
-#### 수집 컬럼
-`jersey_number`, `name_original`, `position`, `position_detail`, `birth_date`,
+#### 수집 컬럼 (CSV)
+`jersey_number`, `name_original`, `tm_player_id`, `position`, `birth_date`,
 `citizenship`, `height_cm`, `foot`, `joined`, `signed_from`, `contract_until`,
-`market_value_eur`, `team_name`, `league`, `season`
+`market_value_eur`, `is_korean`, `player_name`, `team_name`, `league`, `season`
+
+> `position_detail` 수집 제거 (v0.6.0). `jersey_number`는 CSV에만 저장, DB 적재 제외.
 
 #### 입출력
 | 구분 | 경로 |
@@ -103,14 +105,27 @@ python scripts/player_info/scrape_tm_squads.py --season 2025 --league kl2
 | 출력 | `data/raw/TM_squads_{season}_KL2.csv` |
 | 출력 | `database/kleague1.db` → `player_master` 테이블 |
 
+#### 핵심 함수
+
+| 함수 | 설명 |
+|---|---|
+| `get_col_map(table)` | `thead > th` 텍스트 → 셀 인덱스 dict 생성 (헤더 기반 동적 매핑) |
+| `_cell_text(cells, col_map, key)` | col_map 키로 셀 텍스트 추출 (인덱스 범위 안전 처리) |
+| `parse_position(val)` | `"Attack - Right Winger"` → `"Attack"` (detail 제거) |
+| `_parse_player_row(tr, col_map, ...)` | 1개 `<tr>` → 선수 데이터 dict 변환 |
+| `get_team_list(sess, season, league)` | 대회 페이지에서 팀 slug·tm_id 목록 수집 (재시도 3회) |
+| `scrape_squad(sess, team, season, ...)` | 팀 kader 페이지 파싱 → 선수 목록 반환 |
+| `upsert_to_db(conn, rows)` | UPSERT SQL 배치 실행 |
+
 #### 특이사항
 - `requests.Session` 기반 (Selenium 미사용 → 팝업·광고 차단 문제 없음), 팀 간 4~8초 랜덤 딜레이
-- 선수 셀 1행 안에 이름·포지션 2줄 구조 → `position`, `position_detail` 파생 컬럼 분리
-- `player_master` UPSERT: 기존 선수는 값 업데이트, 신규 선수는 INSERT
-- `player_master`에 `foot`, `signed_from`, `contract_until`, `tm_player_id` 컬럼을 자동 추가 (ALTER TABLE)
+- **헤더 기반 col_map**: `thead > th` 파싱으로 컬럼 인덱스를 동적 결정 → "Current club" 삽입 등 TM 테이블 구조 변화에 강건
+- `position_detail` 수집 제거 (v0.6.0), `position`만 단일 문자열로 저장
+- `player_master` UPSERT: 기존 선수는 인적정보 업데이트, 신규 선수는 INSERT
 - `jersey_number`는 시즌마다 달라지므로 CSV에만 보존, DB 적재 제외
-- `is_korean`: `citizenship`에 "Korea" 포함 여부로 판정 (기존 로직 동일)
+- `is_korean`: `citizenship`에 "Korea" 포함 여부로 판정
 - `tm_player_id`: 선수 링크 `/spieler/(\d+)` 정규식으로 추출, COALESCE로 기존값 우선 보존
+- `player_name`은 INSERT 시 항상 NULL (한국명은 별도 매핑 단계에서 채움)
 
 ---
 

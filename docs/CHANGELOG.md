@@ -4,6 +4,50 @@
 
 ---
 
+## [0.6.0] - 2026-03-22
+
+### Changed — player_master 완전 재구축 (scrape_tm_squads.py 단독 소스)
+
+- **`player_master` 테이블 스키마 정리**
+  - 제거 컬럼: `position_detail`, `citizenship_2`, `current_club`
+  - `tm_player_id` 전 레코드 확보 (100% 커버리지)
+  - UNIQUE 제약: `(name_original, birth_date)`
+  - 새 UPSERT: 13개 파라미터, `tm_player_id = COALESCE(기존값, 신규값)` 보존
+
+- **`scrape_tm_squads.py` 핵심 재작성**
+  - 헤더 기반 동적 컬럼 매핑 도입: `get_col_map(table)` + `_cell_text(cells, col_map, key)`
+    → thead 파싱으로 col_map 생성, 고정 인덱스 의존 완전 제거
+  - `position_detail` 수집 제거, `parse_position()` 단일 문자열 반환으로 단순화
+  - `_parse_player_row(tr, col_map, ...)` 시그니처 변경 (col_map 파라미터 추가)
+  - `scrape_squad()` 내부에서 `get_col_map(table)` 호출 후 `_parse_player_row`에 전달
+
+- **`players.master_id` 재매핑** — jersey_number + team 기반 자동 재매핑
+  - player_master 재구축으로 master_id 전체 변경 → 기존 매핑 전면 무효화
+  - 팀명 매핑(한국어 ↔ TM 영문) + `back_number = jersey_number` 조합으로 재매핑
+  - 641/786명 성공 (81.5%), 나머지 145명 = 등번호 미등록 또는 TM 2026 미포함 선수
+
+### Fixed
+- **foot/height 컬럼 교체 버그 완전 해결** — 헤더 기반 col_map 도입으로 구조적 수정
+  - 기존 원인: TM 테이블 "Current club" 컬럼이 인덱스 4에 삽입 → Height/Foot 인덱스가 밀림
+  - 신규: `th.get_text()` → `col_map["Height"]`, `col_map["Foot"]` 으로 정확 추출
+
+- **야고 동명이인 오매핑 해결**
+  - 2025시즌 TM 데이터 수집으로 안양 야고(Yago César, 1997-05-26) 별도 master_id 할당
+  - 울산 야고(Yago Cariello, 1999-07-27)와 정확히 분리됨
+
+- **문선민 시즌별 팀 조회 버그** (이전 버전에서 양 시즌 모두 서울로 표시)
+  - `season_rosters.team_id → teams.team_name` 조인으로 수정 완료
+  - 검증: 2024시즌 전북 / 2025시즌 서울 정확 출력
+
+### Data
+- **player_master 완전 재구축 완료** (DROP → 3시즌 순차 적재)
+  - 2024시즌 KL1 12팀 456명 + KL2 13팀 492명 = 948명
+  - 2025시즌 KL1 12팀 681명 + KL2 13팀 628명 = 1,309명
+  - 2026시즌 KL1 12팀 627명 + KL2 14팀 593명 = 1,220명
+  - 최종 `player_master`: 1,496명 (UPSERT 중복 제거 후) / `tm_player_id` 100% 확보
+
+---
+
 ## [0.5.5] - 2026-03-22
 
 ### Fixed
