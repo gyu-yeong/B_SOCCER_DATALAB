@@ -234,12 +234,12 @@ UNIQUE: `(name_original, birth_date)`
 | back_number | INTEGER | 등번호 |
 | team_name | TEXT | 스크래핑 시점 소속팀명 (참고용) |
 | team_id | INTEGER FK | → teams (스크래핑 시점 소속팀) |
-| master_id | INTEGER FK | → player_master (641명 매핑, 145명 NULL) |
+| master_id | INTEGER FK | → player_master (708명 매핑, 78명 NULL) |
 
 UNIQUE: `(player_name, back_number)`
 
 > **주의**: `team_name`, `team_id`는 스크래핑 시점 단일값이므로 시즌별 소속팀 조회에는 사용 불가. 시즌별 소속팀은 반드시 `season_rosters → teams` 경로 사용.
-> `master_id` NULL 145명: 등번호 미등록 또는 TM 2026 미포함 선수(은퇴·해외이적 등).
+> `master_id` NULL 78명: 등번호 충돌(44)·TM 미등록(18)·오매핑 위험 스킵(16). 수동 보완 필요.
 
 ---
 

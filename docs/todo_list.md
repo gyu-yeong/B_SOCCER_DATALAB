@@ -8,12 +8,15 @@
 
 ## 🟡 보통 (품질 개선)
 
-### 1. players.master_id NULL 145명 처리
-- **현황**: 786명 중 145명이 master_id = NULL
-  - TM 2026 kader 페이지에 등번호 미등록(`-`)이거나 2026시즌 K리그 미등록 선수
+### 1. players.master_id NULL 78명 처리
+- **현황**: 786명 중 78명이 master_id = NULL (v0.6.1에서 67명 자동 보완, 708/786 확보)
+- **원인별 분류**:
+  - 44명: 등번호 충돌 (같은 팀·등번호에 시즌별 다른 선수 혼재)
+  - 18명: TM 등번호 미등록(`-`)
+  - 16명: jersey_number 매칭이 다른 선수를 가리켜 오매핑 위험으로 스킵 (김천 12건 포함)
 - **해결 방법**:
-  - 등번호 미등록 선수: `back_number`와 동일 팀 선수명을 수동으로 대조하여 master_id 보완
-  - 미등록 선수: 2024/2025 TM 데이터로 이미 player_master에 있으므로 수동 매핑 후 UPDATE
+  - players.back_number + 선수명을 TM CSV와 수동 대조 후 `UPDATE players SET master_id = ? WHERE player_id = ?`
+  - jersey_number 방식 한계 → 향후 K리그 포털 생년월일 수집 후 `birth_date + team` 매핑으로 전환 검토
 
 ### 3. season_rosters 2026시즌 자동 적재 연동
 - **현황**: 2026시즌 stats 적재 시 season_rosters에도 자동 반영되지 않음
