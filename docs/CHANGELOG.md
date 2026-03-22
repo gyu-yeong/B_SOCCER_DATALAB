@@ -4,6 +4,32 @@
 
 ---
 
+## [0.5.5] - 2026-03-22
+
+### Fixed
+- **`scripts/player_info/scrape_tm_squads.py`** — Selenium → `requests` 전환으로 Transfermarkt 팝업/광고 차단 문제 완전 해소
+  - `undetected_chromedriver` 의존성 제거, `requests.Session` 기반으로 전환
+  - `make_session()` 추가 (노트북 동일 User-Agent)
+  - `tm_saison_id(season)` 헬퍼 추가 (`season - 2` 변환, 노트북 확인값)
+  - `LEAGUES` 상수 수정: `RSK → RSK1`, `slug` 필드 추가 (`k-league-1`)
+  - URL 패턴 수정: `/x/startseite/…/saison_id/{n}` → `/{slug}/startseite/…/plus/?saison_id={n}`
+  - `TEAM_LINK_PATTERN` 수정: `$` 제거 (TM이 `/saison_id/XXXX` suffix 붙여 반환하는 경우 대응)
+  - `get_team_list()`, `scrape_squad()` requests 방식으로 재작성
+  - 선수 셀 셀렉터 수정: `a.hauptlink` → `td.hauptlink a` (실제 HTML 구조 반영)
+
+- **`scripts/player_info/backfill_tm_player_id.py`** — 동일 패턴으로 requests 전환
+  - Selenium 제거, `make_session()` / `tm_saison_id()` 추가
+  - `LEAGUES` 상수 동일하게 수정
+  - `get_team_list()`, `scrape_kader_for_ids()` requests 방식으로 재작성
+  - 선수 셀 셀렉터 수정: `a.hauptlink` → `td.hauptlink a`
+
+### Data
+- **K League 1 2026 스쿼드 스크래핑 완료**: 12팀 627명 수집 → `player_master` UPSERT
+  - `data/raw/TM_squads_2026_KL1.csv` 저장
+  - `player_master` 총 1520명 / `tm_player_id` 확보 546명
+
+---
+
 ## [0.5.4] - 2026-03-21
 
 ### Added

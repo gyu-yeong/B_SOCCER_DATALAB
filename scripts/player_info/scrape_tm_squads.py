@@ -20,11 +20,7 @@ import pandas as pd
 from pathlib import Path
 from bs4 import BeautifulSoup
 
-import undetected_chromedriver as uc
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import requests
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -43,14 +39,14 @@ OUTPUT_DIR   = PROJECT_ROOT / "data" / "raw"
 BASE_URL = "https://www.transfermarkt.com"
 
 LEAGUES = {
-    "kl1": {"label": "K League 1", "tm_code": "RSK"},
-    "kl2": {"label": "K League 2", "tm_code": "RSK2"},
+    "kl1": {"label": "K League 1", "tm_code": "RSK1", "slug": "k-league-1"},
+    "kl2": {"label": "K League 2", "tm_code": "RSK2", "slug": "k-league-2"},
 }
 
 # HTML 파싱 셀렉터 (구조 변경 시 여기만 수정)
 TABLE_SELECTOR       = "table.items"
 ROW_SELECTOR         = "tr.odd, tr.even"
-TEAM_LINK_PATTERN    = re.compile(r"^/(.+)/startseite/verein/(\d+)$")
+TEAM_LINK_PATTERN    = re.compile(r"^/(.+)/startseite/verein/(\d+)")
 
 # ─────────────────────────────────────────────
 # 파싱 유틸 (build_player_master.py 와 동일 로직)
@@ -107,94 +103,57 @@ def parse_position(val: str) -> tuple[str | None, str | None]:
 
 
 # ─────────────────────────────────────────────
-# WebDriver
+# HTTP 세션 (requests 기반 — 팝업 없음)
 # ─────────────────────────────────────────────
 
 def human_sleep(a: float = 4, b: float = 8) -> None:
     time.sleep(random.uniform(a, b))
 
 
-def create_driver() -> uc.Chrome:
-    """undetected_chromedriver 기반 Chrome 생성 (봇 탐지 우회)"""
-    options = uc.ChromeOptions()
-    options.add_argument("--lang=en-US")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-blink-features=AutomationControlled")
+def make_session() -> requests.Session:
+    """노트북과 동일한 User-Agent로 requests 세션 생성."""
+    sess = requests.Session()
+    sess.headers.update({
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "en-US,en;q=0.9",
+    })
+    return sess
 
-    driver = uc.Chrome(options=options)
-    driver.set_page_load_timeout(60)
-    return driver
 
-
-def dismiss_popups(driver: uc.Chrome) -> None:
+def tm_saison_id(season: int) -> int:
+    """실제 시즌 → Transfermarkt saison_id 변환.
+    노트북 확인: REAL_SEASON=2025 → saison_id=2023 (season - 2)
     """
-    Transfermarkt contentpass 동의 팝업을 닫는다.
-    팝업은 iframe 안에 렌더링되므로 iframe 컨텍스트로 전환 후 클릭해야 함.
-    """
-    try:
-        # 1. 모든 iframe 순회 → #notice 있는 iframe 찾기
-        iframes = driver.find_elements(By.TAG_NAME, "iframe")
-        clicked = False
-        for iframe in iframes:
-            try:
-                driver.switch_to.frame(iframe)
-                btn = WebDriverWait(driver, 2).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "#notice .row-consent button"))
-                )
-                btn.click()
-                time.sleep(1.5)
-                print("  [팝업] iframe 내 동의 클릭 완료")
-                clicked = True
-                break
-            except Exception:
-                driver.switch_to.default_content()
-                continue
-
-        driver.switch_to.default_content()
-
-        if not clicked:
-            # 2. iframe 없이 직접 시도 (구버전 또는 다른 레이아웃)
-            btn = WebDriverWait(driver, 3).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "#notice .row-consent button"))
-            )
-            btn.click()
-            time.sleep(1.5)
-            print("  [팝업] 직접 동의 클릭 완료")
-
-    except Exception:
-        driver.switch_to.default_content()
+    return season - 2
 
 
 # ─────────────────────────────────────────────
 # STEP 1: 대회 페이지 → 팀 목록 수집
 # ─────────────────────────────────────────────
 
-def get_team_list(driver: uc.Chrome, season: int, tm_code: str, league_label: str) -> list[dict]:
+def get_team_list(sess: requests.Session, season: int, league: dict) -> list[dict]:
     """
     대회 페이지에서 팀 slug + tm_id 목록을 추출한다.
     반환값: [{"slug": "...", "tm_id": "...", "team_name": "..."}]
     """
-    url = f"{BASE_URL}/x/startseite/wettbewerb/{tm_code}/saison_id/{season}"
-    print(f"  [팀 목록] {league_label} ({season}) 대회 페이지 접속 중...")
-    driver.get(url)
-    dismiss_popups(driver)
-
-    # 페이지 로드 대기 (테이블이 나타날 때까지)
-    try:
-        WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "table.items"))
-        )
-    except Exception:
-        print("  ⚠ 테이블 로드 타임아웃 — HTML에서 직접 파싱 시도")
-
-    human_sleep(2, 4)
-    soup = BeautifulSoup(driver.page_source, "html.parser")
+    saison_id = tm_saison_id(season)
+    url = (
+        f"{BASE_URL}/{league['slug']}/startseite/wettbewerb/"
+        f"{league['tm_code']}/plus/?saison_id={saison_id}"
+    )
+    print(f"  [팀 목록] {league['label']} (saison_id={saison_id}) 접속 중...")
+    resp = sess.get(url, timeout=30)
+    soup = BeautifulSoup(resp.text, "html.parser")
 
     teams = []
     seen_ids = set()
 
-    for a in soup.find_all("a", href=TEAM_LINK_PATTERN):
-        href = a["href"]
+    for a in soup.select("table.items td.hauptlink a"):
+        href = a.get("href", "")
         m = TEAM_LINK_PATTERN.match(href)
         if not m:
             continue
@@ -215,7 +174,7 @@ def get_team_list(driver: uc.Chrome, season: int, tm_code: str, league_label: st
 # ─────────────────────────────────────────────
 
 def scrape_squad(
-    driver: uc.Chrome,
+    sess: requests.Session,
     team: dict,
     season: int,
     league_label: str,
@@ -223,39 +182,32 @@ def scrape_squad(
 ) -> list[dict]:
     """
     팀의 /kader/ 페이지(Detailed 뷰)에서 선수 행을 파싱한다.
-    URL: /plus/1 → Detailed 뷰 자동 활성화
+    /plus/1 → Detailed 뷰, ?saison_id= 쿼리 파라미터 방식(노트북 확인).
     실패 시 max_retries 횟수만큼 재시도.
     """
+    saison_id = tm_saison_id(season)
     url = (
         f"{BASE_URL}/{team['slug']}/kader/verein/{team['tm_id']}"
-        f"/saison_id/{season}/plus/1"
+        f"/plus/1?saison_id={saison_id}"
     )
-    print(f"    스크래핑: {team['team_name']} ({url})")
+    print(f"    스크래핑: {team['team_name']}")
 
-    for attempt in range(1, max_retries + 2):  # 1차 시도 + max_retries 재시도
+    for attempt in range(1, max_retries + 2):
         try:
-            driver.get(url)
-            dismiss_popups(driver)
-
-            WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, TABLE_SELECTOR))
-            )
-
-            human_sleep(1, 2)
-            soup = BeautifulSoup(driver.page_source, "html.parser")
+            resp = sess.get(url, timeout=30)
+            soup = BeautifulSoup(resp.text, "html.parser")
 
             table = soup.select_one(TABLE_SELECTOR)
             if not table:
                 raise ValueError("table.items 없음")
 
-            rows = table.select(ROW_SELECTOR)
-            results = []
-            for tr in rows:
-                row = _parse_player_row(tr, team["team_name"], league_label, season)
-                if row:
-                    results.append(row)
+            results = [
+                row for tr in table.select(ROW_SELECTOR)
+                if (row := _parse_player_row(tr, team["team_name"], league_label, season))
+            ]
 
             print(f"    → {len(results)}명 파싱 완료")
+            human_sleep(1, 2)
             return results
 
         except Exception as e:
@@ -294,7 +246,8 @@ def _parse_player_row(tr, team_name: str, league_label: str, season: int) -> dic
     jersey = cells[0].get_text(strip=True)
 
     # 1. 선수명 + 포지션 (2줄 구조)
-    name_el = cells[1].select_one("a.hauptlink")
+    # HTML: <td class="posrela"><table><tr><td class="hauptlink"><a href="...">Name</a></td></tr>
+    name_el = cells[1].select_one("td.hauptlink a")
     if not name_el:
         return None
     name_orig = name_el.get_text(strip=True)
@@ -527,42 +480,38 @@ def main():
     print(f"=== Transfermarkt 스쿼드 스크래핑 시작 ===")
     print(f"시즌: {args.season} | 리그: {', '.join(target_leagues)}")
 
-    driver = create_driver()
+    sess = make_session()
 
-    try:
-        for league_key in target_leagues:
-            info = LEAGUES[league_key]
-            print(f"\n[{info['label']}] 처리 시작")
+    for league_key in target_leagues:
+        info = LEAGUES[league_key]
+        print(f"\n[{info['label']}] 처리 시작")
 
-            # STEP 1: 팀 목록
-            teams = get_team_list(driver, args.season, info["tm_code"], info["label"])
-            if not teams:
-                print(f"  ⚠ 팀 목록 없음 — {info['label']} 스킵")
-                continue
+        # STEP 1: 팀 목록
+        teams = get_team_list(sess, args.season, info)
+        if not teams:
+            print(f"  ⚠ 팀 목록 없음 — {info['label']} 스킵")
+            continue
 
-            # STEP 2: 팀별 스쿼드 수집
-            all_rows: list[dict] = []
-            for i, team in enumerate(teams, 1):
-                print(f"  ({i}/{len(teams)})", end=" ")
-                rows = scrape_squad(driver, team, args.season, info["label"])
-                all_rows.extend(rows)
-                if i < len(teams):
-                    human_sleep(4, 8)
+        # STEP 2: 팀별 스쿼드 수집
+        all_rows: list[dict] = []
+        for i, team in enumerate(teams, 1):
+            print(f"  ({i}/{len(teams)})", end=" ")
+            rows = scrape_squad(sess, team, args.season, info["label"])
+            all_rows.extend(rows)
+            if i < len(teams):
+                human_sleep(4, 8)
 
-            if not all_rows:
-                print(f"  ⚠ 수집된 데이터 없음")
-                continue
+        if not all_rows:
+            print(f"  ⚠ 수집된 데이터 없음")
+            continue
 
-            print(f"\n  [합계] {info['label']} 총 {len(all_rows)}명")
+        print(f"\n  [합계] {info['label']} 총 {len(all_rows)}명")
 
-            # CSV 저장
-            save_csv(all_rows, args.season, league_key)
+        # CSV 저장
+        save_csv(all_rows, args.season, league_key)
 
-            # DB 적재
-            load_to_db(all_rows)
-
-    finally:
-        driver.quit()
+        # DB 적재
+        load_to_db(all_rows)
 
     print("\n=== 완료 ===")
 

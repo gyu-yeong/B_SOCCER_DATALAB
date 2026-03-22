@@ -84,9 +84,11 @@ python scripts/player_info/scrape_tm_squads.py --season 2025 --league kl2
 
 #### 탐색 전략 (URL 직접 구성, 2단계)
 1. **대회 페이지** → 팀 slug·tm_id 동적 수집
-   `https://www.transfermarkt.com/x/startseite/wettbewerb/{RSK|RSK2}/saison_id/{season}`
-2. **스쿼드 페이지** → 선수별 상세 정보 파싱 (Detailed 뷰 자동 활성화)
-   `https://www.transfermarkt.com/{slug}/kader/verein/{tm_id}/saison_id/{season}/plus/1`
+   `https://www.transfermarkt.com/k-league-1/startseite/wettbewerb/RSK1/plus/?saison_id={season-2}`
+2. **스쿼드 페이지** → 선수별 상세 정보 파싱 (Detailed 뷰 `/plus/1`)
+   `https://www.transfermarkt.com/{slug}/kader/verein/{tm_id}/plus/1?saison_id={season-2}`
+
+> **saison_id 공식**: `saison_id = 실제시즌 - 2` (K리그 TM 표기 규칙, 예: 2026시즌 → saison_id=2024)
 
 #### 수집 컬럼
 `jersey_number`, `name_original`, `position`, `position_detail`, `birth_date`,
@@ -102,12 +104,13 @@ python scripts/player_info/scrape_tm_squads.py --season 2025 --league kl2
 | 출력 | `database/kleague1.db` → `player_master` 테이블 |
 
 #### 특이사항
-- `undetected_chromedriver` 사용 (봇 탐지 우회), 팀 간 4~8초 랜덤 딜레이
+- `requests.Session` 기반 (Selenium 미사용 → 팝업·광고 차단 문제 없음), 팀 간 4~8초 랜덤 딜레이
 - 선수 셀 1행 안에 이름·포지션 2줄 구조 → `position`, `position_detail` 파생 컬럼 분리
 - `player_master` UPSERT: 기존 선수는 값 업데이트, 신규 선수는 INSERT
-- `player_master`에 `foot`, `signed_from`, `contract_until` 컬럼을 자동 추가 (ALTER TABLE)
+- `player_master`에 `foot`, `signed_from`, `contract_until`, `tm_player_id` 컬럼을 자동 추가 (ALTER TABLE)
 - `jersey_number`는 시즌마다 달라지므로 CSV에만 보존, DB 적재 제외
 - `is_korean`: `citizenship`에 "Korea" 포함 여부로 판정 (기존 로직 동일)
+- `tm_player_id`: 선수 링크 `/spieler/(\d+)` 정규식으로 추출, COALESCE로 기존값 우선 보존
 
 ---
 

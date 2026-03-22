@@ -23,10 +23,7 @@ import pandas as pd
 from pathlib import Path
 from bs4 import BeautifulSoup
 
-import undetected_chromedriver as uc
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import requests
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -41,11 +38,11 @@ OUTPUT_DIR   = PROJECT_ROOT / "data" / "raw"
 BASE_URL = "https://www.transfermarkt.com"
 
 LEAGUES = {
-    "kl1": {"label": "K League 1", "tm_code": "RSK"},
-    "kl2": {"label": "K League 2", "tm_code": "RSK2"},
+    "kl1": {"label": "K League 1", "tm_code": "RSK1", "slug": "k-league-1"},
+    "kl2": {"label": "K League 2", "tm_code": "RSK2", "slug": "k-league-2"},
 }
 
-TEAM_LINK_PATTERN   = re.compile(r"^/(.+)/startseite/verein/(\d+)$")
+TEAM_LINK_PATTERN   = re.compile(r"^/(.+)/startseite/verein/(\d+)")
 PLAYER_ID_PATTERN   = re.compile(r"/spieler/(\d+)")
 TABLE_SELECTOR      = "table.items"
 ROW_SELECTOR        = "tr.odd, tr.even"
@@ -69,54 +66,26 @@ def human_sleep(a: float = 3, b: float = 7) -> None:
 
 
 # ─────────────────────────────────────────────
-# WebDriver
+# HTTP 세션 (requests 기반 — 팝업 없음)
 # ─────────────────────────────────────────────
 
-def create_driver() -> uc.Chrome:
-    options = uc.ChromeOptions()
-    options.add_argument("--lang=en-US")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    driver = uc.Chrome(options=options)
-    driver.set_page_load_timeout(60)
-    return driver
+def make_session() -> requests.Session:
+    """노트북과 동일한 User-Agent로 requests 세션 생성."""
+    sess = requests.Session()
+    sess.headers.update({
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "en-US,en;q=0.9",
+    })
+    return sess
 
 
-def dismiss_popups(driver: uc.Chrome) -> None:
-    """
-    Transfermarkt contentpass 동의 팝업을 닫는다.
-    팝업은 iframe 안에 렌더링되므로 iframe 컨텍스트로 전환 후 클릭해야 함.
-    """
-    try:
-        iframes = driver.find_elements(By.TAG_NAME, "iframe")
-        clicked = False
-        for iframe in iframes:
-            try:
-                driver.switch_to.frame(iframe)
-                btn = WebDriverWait(driver, 2).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "#notice .row-consent button"))
-                )
-                btn.click()
-                time.sleep(1.5)
-                print("  [팝업] iframe 내 동의 클릭 완료")
-                clicked = True
-                break
-            except Exception:
-                driver.switch_to.default_content()
-                continue
-
-        driver.switch_to.default_content()
-
-        if not clicked:
-            btn = WebDriverWait(driver, 3).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "#notice .row-consent button"))
-            )
-            btn.click()
-            time.sleep(1.5)
-            print("  [팝업] 직접 동의 클릭 완료")
-
-    except Exception:
-        driver.switch_to.default_content()
+def tm_saison_id(season: int) -> int:
+    """실제 시즌 → Transfermarkt saison_id 변환 (season - 2)."""
+    return season - 2
 
 
 # ─────────────────────────────────────────────
@@ -169,23 +138,20 @@ def update_tm_player_id(conn: sqlite3.Connection, matches: list[dict]) -> int:
 # 스크래핑: kader 페이지에서 (birth_date, tm_player_id) 수집
 # ─────────────────────────────────────────────
 
-def get_team_list(driver: uc.Chrome, season: int, tm_code: str, label: str) -> list[dict]:
-    url = f"{BASE_URL}/x/startseite/wettbewerb/{tm_code}/saison_id/{season}"
-    print(f"  [팀 목록] {label} ({season}) 접속 중...")
-    driver.get(url)
-    dismiss_popups(driver)
-    try:
-        WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "table.items"))
-        )
-    except Exception:
-        pass
-    human_sleep(2, 4)
+def get_team_list(sess: requests.Session, season: int, league: dict) -> list[dict]:
+    saison_id = tm_saison_id(season)
+    url = (
+        f"{BASE_URL}/{league['slug']}/startseite/wettbewerb/"
+        f"{league['tm_code']}/plus/?saison_id={saison_id}"
+    )
+    print(f"  [팀 목록] {league['label']} (saison_id={saison_id}) 접속 중...")
+    resp = sess.get(url, timeout=30)
+    soup = BeautifulSoup(resp.text, "html.parser")
 
-    soup = BeautifulSoup(driver.page_source, "html.parser")
     teams, seen = [], set()
-    for a in soup.find_all("a", href=TEAM_LINK_PATTERN):
-        m = TEAM_LINK_PATTERN.match(a["href"])
+    for a in soup.select("table.items td.hauptlink a"):
+        href = a.get("href", "")
+        m = TEAM_LINK_PATTERN.match(href)
         if not m:
             continue
         slug, tm_id = m.group(1), m.group(2)
@@ -201,25 +167,26 @@ def get_team_list(driver: uc.Chrome, season: int, tm_code: str, label: str) -> l
 
 
 def scrape_kader_for_ids(
-    driver: uc.Chrome, team: dict, season: int, max_retries: int = 2,
+    sess: requests.Session, team: dict, season: int, max_retries: int = 2,
 ) -> list[dict]:
     """
     kader 페이지에서 각 선수의 (tm_player_id, birth_date, team_name)을 수집한다.
     이름은 수집하지 않아도 됨 — birth_date + team으로 매칭하기 때문.
     실패 시 max_retries 횟수만큼 재시도.
     """
+    saison_id = tm_saison_id(season)
     url = (
         f"{BASE_URL}/{team['slug']}/kader/verein/{team['tm_id']}"
-        f"/saison_id/{season}/plus/1"
+        f"/plus/1?saison_id={saison_id}"
     )
 
     for attempt in range(1, max_retries + 2):
         try:
-            driver.get(url)
-            dismiss_popups(driver)
-            WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, TABLE_SELECTOR))
-            )
+            resp = sess.get(url, timeout=30)
+            soup = BeautifulSoup(resp.text, "html.parser")
+            table = soup.select_one(TABLE_SELECTOR)
+            if not table:
+                raise ValueError("table.items 없음")
             human_sleep(1, 2)
             break
         except Exception as e:
@@ -229,7 +196,8 @@ def scrape_kader_for_ids(
             else:
                 print(f"    ✗ {team['team_name']} 최종 실패 — 스킵")
                 return []
-    soup = BeautifulSoup(driver.page_source, "html.parser")
+
+    soup = BeautifulSoup(resp.text, "html.parser")
     table = soup.select_one(TABLE_SELECTOR)
     if not table:
         return []
@@ -241,7 +209,7 @@ def scrape_kader_for_ids(
             continue
 
         # tm_player_id
-        name_el = cells[1].select_one("a.hauptlink")
+        name_el = cells[1].select_one("td.hauptlink a")
         if not name_el:
             continue
         href = name_el.get("href", "")
@@ -380,25 +348,21 @@ def main():
         conn.close()
         return
 
-    driver = create_driver()
+    sess = make_session()
     all_scraped: list[dict] = []
 
-    try:
-        for league_key in target_leagues:
-            info = LEAGUES[league_key]
-            print(f"\n[{info['label']}] 스크래핑 시작")
+    for league_key in target_leagues:
+        info = LEAGUES[league_key]
+        print(f"\n[{info['label']}] 스크래핑 시작")
 
-            teams = get_team_list(driver, args.season, info["tm_code"], info["label"])
-            for i, team in enumerate(teams, 1):
-                print(f"  ({i}/{len(teams)}) {team['team_name']}", end=" ")
-                rows = scrape_kader_for_ids(driver, team, args.season)
-                all_scraped.extend(rows)
-                print(f"→ {len(rows)}명")
-                if i < len(teams):
-                    human_sleep(4, 8)
-
-    finally:
-        driver.quit()
+        teams = get_team_list(sess, args.season, info)
+        for i, team in enumerate(teams, 1):
+            print(f"  ({i}/{len(teams)}) {team['team_name']}", end=" ")
+            rows = scrape_kader_for_ids(sess, team, args.season)
+            all_scraped.extend(rows)
+            print(f"→ {len(rows)}명")
+            if i < len(teams):
+                human_sleep(4, 8)
 
     print(f"\n[매칭] 수집된 선수: {len(all_scraped)}명 / DB 미매칭 대상: {len(db_df)}명")
 
