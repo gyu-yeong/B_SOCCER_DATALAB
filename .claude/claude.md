@@ -7,6 +7,7 @@
 | `docs/CHANGELOG.md` | 버전별 변경 이력 릴리즈 노트 | 기능 추가·수정·버그 수정 내역 확인 시 |
 | `docs/schema.md` | DB 테이블 정의, ERD, 적재 현황 명세 | 쿼리 작성·테이블 설계·ETL 수정 전 |
 | `docs/scripts.md` | ETL·수집 스크립트 역할·함수·의존 관계 레퍼런스 | 어떤 스크립트를 실행할지 판단하거나 스크립트 수정 전 |
+| `docs/data_lineage.md` | 원천→스크립트→테이블 데이터 계보 | 새 파이프라인 설계, 특정 데이터 출처 추적, 장애 원인 파악 시 |
 | `docs/todo_list.md` | 데이터 정합성 이슈·품질 개선 이슈 트래커 | 신규 작업 착수 전 기존 알려진 이슈 확인 시 |
 | `docs/WEBDESIGN_GUIDE.md` | 모드 제약·타이포·레이아웃·컴포넌트 규칙 SSoT | 웹 페이지·컴포넌트 구현 전 반드시 확인 |
 | `docs/kleague-design-agent.md` | 웹디자인 POC 서브에이전트 지시문 (역할·컴포넌트·산출물 규칙) | 웹 대시보드 샘플 생성·개선 요청 시 반드시 먼저 읽을 것 |
@@ -21,6 +22,7 @@
 - `docs/CHANGELOG.md` — 기능 추가·수정·버그 수정·데이터 적재 완료 등 모든 변경 시
 - `docs/schema.md` — 테이블·컬럼 추가·삭제·수정, FK·UNIQUE 제약 변경, 적재 현황 수치 변경 시
 - `docs/scripts.md` — 스크립트 추가·수정·삭제, 함수·파라미터 변경, `_archive/` 이동 시
+- `docs/data_lineage.md` — 새 원천 데이터 추가, 파이프라인 경로 변경, 신규 적재 스크립트 추가 시
 - `docs/todo_list.md` — 새 이슈 발견 시 추가, 이슈 해결 완료 시 해당 항목 삭제
 - `docs/WEBDESIGN_GUIDE.md` — 모드 규칙·컴포넌트 스펙 변경, 페이지 구현 완료, API 엔드포인트 확정 시
 - `docs/kleague-design-agent.md` — 에이전트 역할·트리거·산출물 규칙 변경 시

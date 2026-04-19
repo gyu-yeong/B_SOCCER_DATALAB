@@ -11,7 +11,7 @@ import sys, sqlite3, pandas as pd, os
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
-DB_PATH = "database/kleague1.db"
+DB_PATH = "database/kleague.db"
 
 
 # -------------------------

@@ -1,4 +1,4 @@
-# Database Schema: kleague1.db
+# Database Schema: kleague.db
 
 ## ERD (Mermaid)
 

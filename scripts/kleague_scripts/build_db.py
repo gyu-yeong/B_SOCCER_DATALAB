@@ -21,7 +21,7 @@ import pandas as pd
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 BASE_DIR    = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-DB_PATH     = os.path.join(BASE_DIR, "database", "kleague1.db")
+DB_PATH     = os.path.join(BASE_DIR, "database", "kleague.db")
 RAW_DIR     = os.path.join(BASE_DIR, "data", "raw")
 TM_SQ_DIR   = os.path.join(RAW_DIR, "TM_squads")   # data/raw/TM_squads/
 

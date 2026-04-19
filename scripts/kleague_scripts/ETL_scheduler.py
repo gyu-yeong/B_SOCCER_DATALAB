@@ -18,7 +18,7 @@ import os
 
 # 경로 설정 (이 스크립트 위치에서 DB 참조)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(SCRIPT_DIR, "..", "..", "database", "kleague1.db")
+DB_PATH = os.path.join(SCRIPT_DIR, "..", "..", "database", "kleague.db")
 
 # 인코딩 설정 (Windows cp949 환경)
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")

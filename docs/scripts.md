@@ -100,8 +100,8 @@ python scripts/player_info/backfill_tm_player_id.py --season 2026 --league kl1
 | 구분 | 경로 |
 |---|---|
 | 입력 | transfermarkt.com kader 페이지 (웹) |
-| 입력 | `database/kleague1.db` → `player_master` (tm_player_id IS NULL) |
-| 출력 | `database/kleague1.db` → `player_master.tm_player_id` UPDATE |
+| 입력 | `database/kleague.db` → `player_master` (tm_player_id IS NULL) |
+| 출력 | `database/kleague.db` → `player_master.tm_player_id` UPDATE |
 | 출력 | `data/raw/unmatched_tm_id_{season}.csv` (수동 처리 대상) |
 
 #### 특이사항
@@ -209,7 +209,7 @@ TM squad CSV의 `name_kor` 컬럼에 K리그 포털 등록명을 직접 기입�
 ## 1. `ETL_ver4.py` — CSV → SQLite 적재
 
 ### 역할
-로컬에 저장된 K리그 경기기록 CSV 파일을 읽어 `kleague1.db`에 적재합니다.
+로컬에 저장된 K리그 경기기록 CSV 파일을 읽어 `kleague.db`에 적재합니다.
 포털에서 다운로드한 CSV가 있을 때 사용하는 1회성 적재 도구입니다.
 
 ### 실행 방법

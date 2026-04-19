@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(sqlite3 /c/b_soccer_datalab/database/kleague1.db \".schema\")",
+      "Bash(sqlite3 /c/b_soccer_datalab/database/kleague.db \".schema\")",
       "Bash(wc -l /c/b_soccer_datalab/data/raw/2025_KLEAGUE1/*.csv)",
       "Bash(python3 -c \":*)",
       "Bash(python -c \":*)"

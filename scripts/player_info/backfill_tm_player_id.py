@@ -32,7 +32,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 # ─────────────────────────────────────────────
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DB_PATH      = PROJECT_ROOT / "database" / "kleague1.db"
+DB_PATH      = PROJECT_ROOT / "database" / "kleague.db"
 OUTPUT_DIR   = PROJECT_ROOT / "data" / "raw"
 
 BASE_URL = "https://www.transfermarkt.com"

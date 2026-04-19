@@ -22,7 +22,7 @@ import sys, os, sqlite3
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-DB_PATH  = os.path.join(BASE_DIR, "database", "kleague1.db")
+DB_PATH  = os.path.join(BASE_DIR, "database", "kleague.db")
 
 # ── 패치 규칙 ──────────────────────────────────────────────────
 # (player_name, team_id) → master_id

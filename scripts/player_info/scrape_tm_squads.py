@@ -2,7 +2,7 @@
 Transfermarkt K리그 스쿼드 자동 스크래핑 스크립트
 Source : transfermarkt.com → /kader/ (Detailed 뷰, /plus/1)
 Target : data/raw/TM_squads_{season}_{KL1|KL2}.csv
-         database/kleague1.db → player_master 테이블
+         database/kleague.db → player_master 테이블
 
 Usage:
     python scripts/player_info/scrape_tm_squads.py --season 2024
@@ -34,7 +34,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 # ─────────────────────────────────────────────
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DB_PATH      = PROJECT_ROOT / "database" / "kleague1.db"
+DB_PATH      = PROJECT_ROOT / "database" / "kleague.db"
 OUTPUT_DIR   = PROJECT_ROOT / "data" / "raw" / "TM_squads"
 
 # ─────────────────────────────────────────────

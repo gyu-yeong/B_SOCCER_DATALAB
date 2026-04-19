@@ -50,8 +50,14 @@
   - `schedule` 테이블(471건)은 **2026시즌**만 적재 (competition_id: 33112·33113·33114)
   - `matches` 테이블은 **2024·2025시즌**만 적재 (competition_id: 23992·14879) → competition_id 교집합 없어 현재 JOIN 불가
   - `schedule.match_id`도 전건 NULL — 2026 ETL 미실행으로 matches에 2026 행 없음
+- **수집 현황 (2026-04-19)**:
+  - `data/raw/KLEAGUE_SCHEDULE/kleague1_2024.csv` ✅ 수집 완료
+  - `data/raw/KLEAGUE_SCHEDULE/kleague2_2024.csv` ✅ 수집 완료
+  - `data/raw/KLEAGUE_SCHEDULE/kleague2_2025.csv` ✅ 수집 완료
+  - `data/raw/KLEAGUE_SCHEDULE/kleague1_2026.csv` ✅ 수집 완료
+  - `data/raw/KLEAGUE_SCHEDULE/kleague1_2025.csv` 🔄 수집 중 — 완료 시 한번에 적재 예정
 - **해결 방법**:
-  - **2024·2025**: K리그 포털에서 과거 일정표 CSV 수집 → `schedule` 테이블 적재 → UPDATE matches
+  - **2024·2025**: KLEAGUE_SCHEDULE CSV → `schedule` 테이블 적재 스크립트 작성 → `matches.match_date` UPDATE
   - **2026**: `ETL_scheduler.py` 실행 → matches에 2026 행 생성 → schedule JOIN으로 match_date + match_id 동시 백필
     ```sql
     UPDATE matches SET match_date = (
