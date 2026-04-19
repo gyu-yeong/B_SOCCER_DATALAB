@@ -29,19 +29,12 @@ erDiagram
 
     player_master {
         INTEGER master_id PK
-        TEXT    player_name
-        TEXT    name_original
-        TEXT    tm_player_id
+        TEXT    name_kor
         TEXT    birth_date
-        INTEGER height_cm
         TEXT    citizenship
-        INTEGER is_korean
         TEXT    position
-        TEXT    foot
-        TEXT    joined
-        TEXT    signed_from
-        TEXT    contract_until
-        INTEGER market_value_eur
+        INTEGER height_cm
+        TEXT    tm_player_id
     }
 
     players {
@@ -51,22 +44,24 @@ erDiagram
         INTEGER back_number
         TEXT    team_name
         INTEGER team_id FK
-        INTEGER master_id FK
         TIMESTAMP created_at
         TIMESTAMP updated_at
     }
 
-    season_rosters {
-        INTEGER season_year PK
-        INTEGER player_id PK
-        INTEGER team_id PK
-        INTEGER back_number
+    season_roster {
+        INTEGER id PK
+        INTEGER master_id FK
+        INTEGER season
+        INTEGER team_id FK
+        INTEGER jersey_number
+        TEXT    joined_date
     }
 
     player_match_stats {
         INTEGER stat_id PK
         INTEGER match_id FK
         INTEGER player_id FK
+        INTEGER master_id FK
         INTEGER team_id FK
         INTEGER minutes_played
         INTEGER goals
@@ -151,9 +146,9 @@ erDiagram
     matches ||--o| schedule : "match_id"
     players ||--o{ player_match_stats : "player_id"
     teams ||--o{ player_match_stats : "team_id"
-    player_master ||--o{ players : "master_id"
-    players ||--o{ season_rosters : "player_id"
-    teams ||--o{ season_rosters : "team_id"
+    player_master ||--o{ player_match_stats : "master_id"
+    player_master ||--o{ season_roster : "master_id"
+    teams ||--o{ season_roster : "team_id"
 ```
 
 ---
@@ -199,70 +194,66 @@ UNIQUE: `(competition_id, round_number, home_team_id, away_team_id)`
 
 ---
 
-### `player_master` — 선수 인물 원장 (Transfermarkt 기준)
+### `player_master` — 선수 인물 원장
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
 | master_id | INTEGER PK | 자동 증가 |
-| player_name | TEXT | 한국어 이름 (외국인: 한국 음차명, 한국인: 한국어명) — 초기 NULL, 별도 매핑 단계에서 채움 |
-| name_original | TEXT NOT NULL | TM 영문 이름 (한국인도 영문 로마자 표기) |
-| tm_player_id | TEXT | Transfermarkt 선수 고유 ID — 전 레코드 100% 확보 |
-| birth_date | TEXT | 생년월일 (YYYY-MM-DD) |
-| height_cm | INTEGER | 키 (cm) |
+| name_kor | TEXT NOT NULL | 한글명 (한국인) 또는 한글 음차명 (외국인) |
+| birth_date | TEXT | 생년월일 (YYYY-MM-DD) — NULL 없음 |
 | citizenship | TEXT | 국적 (TM 표기) |
-| is_korean | INTEGER | 1: 한국인 / 0: 외국인 |
 | position | TEXT | 포지션 대분류 (Attack / Midfield / Defender / Goalkeeper) |
-| foot | TEXT | 주발 (right / left / both) |
-| joined | TEXT | 현재 클럽 합류일 (YYYY-MM-DD) |
-| signed_from | TEXT | 영입 출처 클럽명 |
-| contract_until | TEXT | 계약 만료일 (원문 그대로) |
-| market_value_eur | INTEGER | 시장가치 (유로) |
+| height_cm | INTEGER | 키 (cm) |
+| tm_player_id | TEXT | Transfermarkt 선수 고유 ID |
 
-UNIQUE: `(name_original, birth_date)`
+UNIQUE: `(name_kor, birth_date)`
 
-> **설계 의도**: 1인 = 1행. `birth_date`가 동명이인 구분 키. `scrape_tm_squads.py` 단독 소스 (v0.6.0부터).
-> `position_detail`, `citizenship_2`, `current_club` 컬럼 제거 (v0.6.0).
-> **적재 현황 (2026-03-22)**: 총 1,496명 / tm_player_id 100% 확보 (2024·2025·2026 3시즌 UPSERT 누적)
+> **설계 의도**: 1인 = 1행. ETL 매핑 키 = `name_kor`. 동명이인 구분 키 = `birth_date` + `season_roster(team_id)`.
+> `build_db.py`로 재구축. 소스: `TM_squads/TM_squads_*.csv`(name_kor 컬럼) + `선수인적정보.xlsx` + `players` 테이블.
+> **적재 현황 (2026-04-19)**: 총 1,650명 / birth_date NULL 0명
 
 ---
 
-### `players` — 선수 정보 (스크래핑 누적 로스터)
+### `players` — 선수 정보 (스크래핑 누적 로스터, 레거시)
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
 | player_id | INTEGER PK | 자동 증가 |
-| player_name | TEXT | 선수명 |
+| player_name | TEXT | 선수명 (한글) |
 | position | TEXT | 포지션 |
-| back_number | INTEGER | 등번호 |
+| back_number | INTEGER | 등번호 (스크래핑 시점 기준) |
 | team_name | TEXT | 스크래핑 시점 소속팀명 (참고용) |
 | team_id | INTEGER FK | → teams (스크래핑 시점 소속팀) |
-| master_id | INTEGER FK | → player_master (708명 매핑, 78명 NULL) |
 
 UNIQUE: `(player_name, back_number)`
 
-> **주의**: `team_name`, `team_id`는 스크래핑 시점 단일값이므로 시즌별 소속팀 조회에는 사용 불가. 시즌별 소속팀은 반드시 `season_rosters → teams` 경로 사용.
-> `master_id` NULL 78명: 등번호 충돌(44)·TM 미등록(18)·오매핑 위험 스킵(16). 수동 보완 필요.
+> **주의**: v0.7.0부터 `master_id` 컬럼 제거. `player_match_stats` 조회 시 `master_id` 컬럼 직접 사용 권장.
+> `team_name`, `team_id`는 스크래핑 시점 단일값이므로 시즌별 소속팀 조회에는 `season_roster` 사용.
+> 이 테이블은 `build_db.py Phase 3` 백필을 위한 보조 테이블로 유지됨 (삭제 예정 없음).
 
 ---
 
-### `season_rosters` — 시즌별 선수-팀 스냅샷
+### `season_roster` — 시즌별 선수-팀 스냅샷
 | 컬럼 | 타입 | 설명 |
 |---|---|---|
-| season_year | INTEGER PK | 시즌 연도 (2024, 2025, …) |
-| player_id | INTEGER PK | → players |
-| team_id | INTEGER PK | → teams (경기 당시 실제 소속팀) |
-| back_number | INTEGER | 등번호 |
+| id | INTEGER PK | 자동 증가 |
+| master_id | INTEGER FK | → player_master |
+| season | INTEGER | 시즌 연도 (2024, 2025, …) |
+| team_id | INTEGER FK | → teams |
+| jersey_number | INTEGER | 등번호 (NULL 허용 — TM 미등록 선수) |
+| joined_date | TEXT | 합류일 (TM 데이터) |
 
-PK: `(season_year, player_id, team_id)` — 시즌 중 이적 시 두 팀 모두 별도 행으로 기록
+UNIQUE: `(master_id, season, team_id)` — jersey_number는 UNIQUE 아님 (여름 이적시장 재배정 가능)
 
-> **소스**: `player_match_stats.team_id` 기준 역산. `players.team_id` 미사용(스크래핑 시점 단일값이라 이적 선수 오류 발생).
+> **소스**: `data/raw/TM_squads/TM_squads_{season}_KL*.csv` → `build_db.py Phase 2`.
+> **역할**: ETL 동명이인 disambiguation (1차: name_kor, 2차: season_roster team_id 필터).
+> **적재 현황 (2026-04-19)**: 3,137건
 > **시즌별 소속팀 조회 쿼리 패턴**:
 > ```sql
-> SELECT pm.player_name, pm.birth_date, sr.season_year, t.team_name
-> FROM season_rosters sr
-> JOIN players p        ON sr.player_id = p.player_id
-> JOIN player_master pm ON p.master_id = pm.master_id
+> SELECT pm.name_kor, pm.birth_date, sr.season, t.team_name
+> FROM season_roster sr
+> JOIN player_master pm ON sr.master_id = pm.master_id
 > JOIN teams t          ON sr.team_id = t.team_id
-> WHERE pm.player_name = '문선민'
-> ORDER BY sr.season_year
+> WHERE pm.name_kor = '문선민'
+> ORDER BY sr.season
 > ```
 
 ---
@@ -272,7 +263,8 @@ PK: `(season_year, player_id, team_id)` — 시즌 중 이적 시 두 팀 모두
 |---|---|---|
 | stat_id | INTEGER PK | 자동 증가 |
 | match_id | INTEGER FK | → matches |
-| player_id | INTEGER FK | → players |
+| player_id | INTEGER FK | → players (레거시, 유지) |
+| master_id | INTEGER FK | → player_master (v0.7.0 추가, 99% 확보) |
 | team_id | INTEGER FK | → teams (해당 경기 소속팀) |
 | minutes_played | INTEGER | 출전 시간(분) |
 | goals | INTEGER | 득점 |
@@ -330,6 +322,17 @@ PK: `(season_year, player_id, team_id)` — 시즌 중 이적 시 두 팀 모두
 
 UNIQUE: `(match_id, player_id)` — INSERT OR REPLACE 방식으로 중복 방지
 
+> **권장 쿼리 패턴** (v0.7.0~): `master_id` 직접 조인으로 `players` 테이블 우회
+> ```sql
+> SELECT pm.name_kor, pm.birth_date, t.team_name, m.round_number, pms.goals, pms.assists
+> FROM player_match_stats pms
+> JOIN player_master pm ON pms.master_id = pm.master_id
+> JOIN teams t ON pms.team_id = t.team_id
+> JOIN matches m ON pms.match_id = m.match_id
+> JOIN competitions c ON m.competition_id = c.competition_id
+> WHERE pm.name_kor = '문선민' AND c.year = 2024
+> ```
+
 ---
 
 ### `schedule` — 시즌 일정 마스터
@@ -355,21 +358,22 @@ UNIQUE: `(competition_id, round_number, home_team_id, away_team_id)`
 
 ---
 
-## 현재 적재 현황 (2026-03-15 기준)
+## 현재 적재 현황 (2026-04-12 기준)
 
 | 테이블 | 건수 | 비고 |
 |---|---|---|
 | competitions | 5 | 2024·2025 K리그1, 2026 K리그1·K리그2·슈퍼컵 |
-| teams | 29 | K리그1 13팀 + K리그2 16팀 |
-| matches | 396 | 2024·2025 K리그1 (각 33라운드 × 6경기) |
-| players | 786 | 2024·2025 K리그1 선수 (master_id 581명 매핑) |
-| player_match_stats | ~15,000 | 2024·2025 K리그1 경기별 스탯 |
+| teams | 29+ | K리그1 13팀 + K리그2 16팀 |
+| matches | 396+ | 2024·2025 K리그1 (각 38라운드) |
+| players | 786+ | 레거시 테이블 — ETL 시 누적 (master_id 미매핑) |
+| player_master | 1,618 | 2024·2025·2026 3시즌 누적 / birth_date 100% |
+| season_roster | 3,130 | 2024 KL1+KL2 / 2025 KL1+KL2 / 2026 KL1+KL2 |
+| player_match_stats | 18,233 | 2024·2025 K리그1 / master_id 17,429건 (95.6%) |
 | schedule | 471 | 2026 K리그1 198 / K리그2 272 / 슈퍼컵 1 |
-| player_master | 1,000 | 2026시즌 K리그 전체 선수 인물 원장 (한국인 865 / 외국인 135) |
-| season_rosters | 965 | 2024시즌 490행 / 2025시즌 475행 (이적 포함) |
 
 **데이터 소스**
 - 2024 K리그1: 포털 스크래핑 (`ETL_backpill_stable.py`)
 - 2025 K리그1 1R~33R: CSV 적재 (`ETL_ver4.py`)
 - 2025 K리그1 34R~38R: 포털 스크래핑 (`ETL_backpill_stable.py`, `from_round=34`)
 - 2026 일정: CSV 적재 (`data/raw/2026_KLEAGUE/2026_일정표.csv`)
+- player_master + season_roster: `build_db.py` (v0.7.0)

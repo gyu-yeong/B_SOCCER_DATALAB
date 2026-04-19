@@ -2,76 +2,25 @@
 
 현재 사용 중인 스크립트에 대한 역할, 실행 방법, 주요 함수를 정리합니다.
 
----
-
-## player_master 구축 스크립트 (`scripts/player_info/`)
-
-### 1. `build_player_master.py` — player_master 테이블 초기 생성
-
-#### 역할
-Transfermarkt에서 수집한 `선수정보.csv`를 파싱하여 `player_master` 테이블에 적재합니다.
-외국인 선수는 `player_name = NULL`로 적재하고, 한국 음차명 매핑 템플릿 CSV를 생성합니다.
-
-#### 실행 방법
-```bash
-# 프로젝트 루트에서 실행
-python scripts/player_info/build_player_master.py
-```
-`C:/Users/koaro/Downloads/선수정보.csv` 경로의 파일을 읽어 DB에 적재합니다.
-
-#### 입출력
-| 구분 | 경로 |
-|---|---|
-| 입력 | `C:/Users/koaro/Downloads/선수정보.csv` (Transfermarkt 수집본) |
-| 출력 | `database/kleague1.db` → `player_master` 테이블 |
-| 출력 | `C:/Users/koaro/Downloads/외국인선수_한국명매핑.csv` (템플릿) |
-
-#### 특이사항
-- `INSERT OR IGNORE` 방식으로 `(name_original, birth_date)` 중복 스킵 → 복수 시즌 데이터 순차 적재 가능
-- `is_korean`: `Citizenship` 컬럼에 "Korea" 포함 여부로 판정
-- 생년월일 파싱: `DD/MM/YYYY` → `YYYY-MM-DD`
+> **아카이브 경로**
+> - `scripts/kleague_scripts/_archive/` — ETL_player_master.py 외 구버전 ETL
+> - `scripts/player_info/_archive/` — build_player_master.py, map_foreign_korean_names.py, import_korean_names.py (build_db.py + name_kor 직접 입력 방식으로 대체)
 
 ---
 
-### 2. `map_foreign_korean_names.py` — 외국인 한국 음차명 자동 매핑
+## player_info 스크립트 (`scripts/player_info/`)
 
-#### 역할
-K리그 데이터포털 `선수인적정보.xlsx`와 `player_master`를 매핑하여 외국인 선수의 한국 음차명을 채운 CSV를 생성합니다.
-
-#### 실행 방법
-```bash
-python scripts/player_info/map_foreign_korean_names.py
-```
-
-#### 매핑 전략 (6단계)
-| 순위 | 조건 | 설명 |
-|---|---|---|
-| 1순위 | 생년월일 + 클럽 정확 일치 | 가장 높은 신뢰도 |
-| 2순위 | 생년월일 단독 고유 매칭 | xlsx 내 해당 생년월일이 1명뿐인 경우 |
-| 3순위 | 생년월일 ±30일 + 클럽 퍼지 매칭 | 소스 간 날짜 오차 흡수 |
-| 4순위 | DB players 테이블 음차명 fallback | K리그1 팀 한정 |
-| 5순위 | 같은 연도·일 + 클럽 (월 불일치) | 월만 다른 케이스 |
-| 6순위 | `KNOWN_EXCEPTIONS` 하드코딩 | 자동 매핑 불가 2명 |
-
-#### 입출력
-| 구분 | 경로 |
-|---|---|
-| 입력 | `data/raw/2026_KLEAGUE/선수인적정보.xlsx` |
-| 입력 | `database/kleague1.db` → `player_master` |
-| 출력 | `C:/Users/koaro/Downloads/외국인선수_한국명매핑.csv` |
-
----
-
-### 3. `scrape_tm_squads.py` — Transfermarkt 스쿼드 자동 스크래핑
+### 1. `scrape_tm_squads.py` — Transfermarkt 스쿼드 자동 스크래핑
 
 #### 역할
 Transfermarkt에서 K League 1·2 전 팀의 스쿼드 상세 정보를 자동 수집합니다.
-CLI 인자로 시즌과 리그를 지정하면 CSV 백업 저장 및 `player_master` DB 직접 적재까지 완료합니다.
+CLI 인자로 시즌과 리그를 지정하면 `data/raw/TM_squads/` 하위에 CSV로 저장합니다.
+**DB 적재는 이 스크립트에서 수행하지 않으며 `build_db.py`가 담당합니다.**
 
 #### 실행 방법
 ```bash
 # 프로젝트 루트에서 실행
-python scripts/player_info/scrape_tm_squads.py --season 2025
+python scripts/player_info/scrape_tm_squads.py --season 2026
 python scripts/player_info/scrape_tm_squads.py --season 2024 --league kl1
 python scripts/player_info/scrape_tm_squads.py --season 2025 --league kl2
 ```
@@ -79,31 +28,28 @@ python scripts/player_info/scrape_tm_squads.py --season 2025 --league kl2
 #### 옵션
 | 인자 | 필수 | 설명 |
 |------|------|------|
-| `--season` | ✅ | 수집할 시즌 연도 (예: 2025) |
+| `--season` | ✅ | 수집할 시즌 연도 (예: 2026) |
 | `--league` | ❌ | `kl1` / `kl2` / `all` (기본값: `all`) |
 
 #### 탐색 전략 (URL 직접 구성, 2단계)
 1. **대회 페이지** → 팀 slug·tm_id 동적 수집
-   `https://www.transfermarkt.com/k-league-1/startseite/wettbewerb/RSK1/plus/?saison_id={season-2}`
-2. **스쿼드 페이지** → 선수별 상세 정보 파싱 (Detailed 뷰 `/plus/1`)
-   `https://www.transfermarkt.com/{slug}/kader/verein/{tm_id}/plus/1?saison_id={season-2}`
+   `https://www.transfermarkt.com/k-league-1/startseite/wettbewerb/RSK1/plus/?saison_id={season-1}`
+2. **스쿼드 페이지** → 선수별 상세 정보 파싱 (Detailed 뷰 `/plus/1`, 포지션별 전체 테이블 순회)
+   `https://www.transfermarkt.com/{slug}/kader/verein/{tm_id}/plus/1?saison_id={season-1}`
 
-> **saison_id 공식**: `saison_id = 실제시즌 - 2` (K리그 TM 표기 규칙, 예: 2026시즌 → saison_id=2024)
+> **saison_id 공식**: `saison_id = 실제시즌 - 1` (K리그 캘린더 시즌 TM 표기 규칙, 예: 2026시즌 → saison_id=2025)
 
 #### 수집 컬럼 (CSV)
 `jersey_number`, `name_original`, `tm_player_id`, `position`, `birth_date`,
 `citizenship`, `height_cm`, `foot`, `joined`, `signed_from`, `contract_until`,
 `market_value_eur`, `is_korean`, `player_name`, `team_name`, `league`, `season`
 
-> `position_detail` 수집 제거 (v0.6.0). `jersey_number`는 CSV에만 저장, DB 적재 제외.
-
 #### 입출력
 | 구분 | 경로 |
 |---|---|
 | 입력 | transfermarkt.com (웹) |
-| 출력 | `data/raw/TM_squads_{season}_KL1.csv` |
-| 출력 | `data/raw/TM_squads_{season}_KL2.csv` |
-| 출력 | `database/kleague1.db` → `player_master` 테이블 |
+| 출력 | `data/raw/TM_squads/TM_squads_{season}_KL1.csv` |
+| 출력 | `data/raw/TM_squads/TM_squads_{season}_KL2.csv` |
 
 #### 핵심 함수
 
@@ -114,14 +60,12 @@ python scripts/player_info/scrape_tm_squads.py --season 2025 --league kl2
 | `parse_position(val)` | `"Attack - Right Winger"` → `"Attack"` (detail 제거) |
 | `_parse_player_row(tr, col_map, ...)` | 1개 `<tr>` → 선수 데이터 dict 변환 |
 | `get_team_list(sess, season, league)` | 대회 페이지에서 팀 slug·tm_id 목록 수집 (재시도 3회) |
-| `scrape_squad(sess, team, season, ...)` | 팀 kader 페이지 파싱 → 선수 목록 반환 |
-| `upsert_to_db(conn, rows)` | UPSERT SQL 배치 실행 |
+| `scrape_squad(sess, team, season, ...)` | 팀 kader 페이지 파싱 — 포지션별 `table.items` 전체 순회 → 선수 목록 반환 |
 
 #### 특이사항
-- `requests.Session` 기반 (Selenium 미사용 → 팝업·광고 차단 문제 없음), 팀 간 4~8초 랜덤 딜레이
-- **헤더 기반 col_map**: `thead > th` 파싱으로 컬럼 인덱스를 동적 결정 → "Current club" 삽입 등 TM 테이블 구조 변화에 강건
-- `position_detail` 수집 제거 (v0.6.0), `position`만 단일 문자열로 저장
-- `player_master` UPSERT: 기존 선수는 인적정보 업데이트, 신규 선수는 INSERT
+- `requests.Session` 기반 (Selenium 미사용), 팀 간 4~8초 랜덤 딜레이
+- **헤더 기반 col_map**: `thead > th` 파싱으로 컬럼 인덱스를 동적 결정
+- **포지션별 테이블 전체 파싱**: `select("table.items")`로 GK/DEF/MID/FWD 각 테이블 모두 순회 (v0.7.3 수정)
 - `jersey_number`는 시즌마다 달라지므로 CSV에만 보존, DB 적재 제외
 - `is_korean`: `citizenship`에 "Korea" 포함 여부로 판정
 - `tm_player_id`: 선수 링크 `/spieler/(\d+)` 정규식으로 추출, COALESCE로 기존값 우선 보존
@@ -129,7 +73,7 @@ python scripts/player_info/scrape_tm_squads.py --season 2025 --league kl2
 
 ---
 
-### 4. `backfill_tm_player_id.py` — 기존 player_master에 tm_player_id 백필
+### 2. `backfill_tm_player_id.py` — 기존 player_master에 tm_player_id 백필
 
 #### 역할
 `scrape_tm_squads.py` 도입 이전에 수동 CSV로 적재된 기존 `player_master` 레코드의
@@ -168,21 +112,29 @@ python scripts/player_info/backfill_tm_player_id.py --season 2026 --league kl1
 
 ---
 
-### 5. `import_korean_names.py` — 한국 음차명 DB 반영
+### `patch_homonym_masters.py` — 동명이인 master_id 수동 패치
 
 #### 역할
-`map_foreign_korean_names.py`가 생성한 CSV(또는 수동 보완 후)를 읽어 `player_master.player_name`을 업데이트합니다.
+`build_db.py Phase 3`의 team 기반 disambiguation이 실패한 동명이인 선수에 대해
+`(player_name, team_id)` 조합으로 `player_match_stats.master_id`를 직접 UPDATE합니다.
 
 #### 실행 방법
 ```bash
-python scripts/player_info/import_korean_names.py
+# build_db.py 실행 직후 실행
+python scripts/kleague_scripts/patch_homonym_masters.py
 ```
 
-#### 입출력
-| 구분 | 경로 |
-|---|---|
-| 입력 | `C:/Users/koaro/Downloads/외국인선수_한국명매핑.csv` |
-| 출력 | `database/kleague1.db` → `player_master.player_name` UPDATE |
+#### 패치 규칙 (`PATCH_RULES`)
+| player_name | team_id | master_id | TM 원명 | 비고 |
+|-------------|---------|-----------|---------|------|
+| 가브리엘 | 30078 (강원) | 571 | Vitor Gabriel (2000-01-20) | 임시 패치 |
+| 가브리엘 | 30158 (광주) | 677 | Gabriel Tigrão (2001-10-13) | 임시 패치 |
+| 마테우스 | 29757 (울산) | 162 | Matheus Sales (1995-05-13) | 임시 패치 |
+| 마테우스 | 29758 (안양) | 1925 | Matheus Oliveira (1997-09-28) | 임시 패치 |
+
+#### 특이사항
+- `build_db.py` 실행 후 항상 재실행 필요 (build_db가 master_id 전체 리셋)
+- 향후 K리그 포털 등록명이 구분명으로 확정되면 `TM_squads CSV name_kor` 수정 + `build_db.py` 재실행으로 이 스크립트 대체 가능
 
 ---
 
@@ -190,7 +142,67 @@ python scripts/player_info/import_korean_names.py
 
 **경로**: `scripts/kleague_scripts/`
 
-현재 사용 중인 스크립트 4개에 대한 역할, 실행 방법, 주요 함수를 정리합니다.
+현재 사용 중인 스크립트 5개에 대한 역할, 실행 방법, 주요 함수를 정리합니다.
+
+---
+
+## 0. `build_db.py` — player_master + season_roster 재구축 (v0.8.0)
+
+### 역할
+player_master 테이블과 season_roster 테이블을 전면 재구축하고, `player_match_stats.master_id`를 백필합니다.
+TM squad CSV + 선수인적정보.xlsx + player_info CSV + players 테이블을 조합하여 선수 인물 원장을 구축합니다.
+
+### 실행 방법
+```bash
+# 프로젝트 루트에서 실행
+cd C:\b_soccer_datalab
+python scripts/kleague_scripts/build_db.py
+```
+기존 `player_master`, `season_roster` 테이블을 DROP 후 재생성합니다. (player_match_stats는 유지)
+
+### 처리 단계 (Phase)
+
+| Phase | 소스 | 내용 |
+|---|---|---|
+| 1a | `data/raw/TM_squads/TM_squads_*.csv` | name_kor 컬럼 우선 사용 (외국인 한글 등록명 직접 반영); 미기재 시 name_original(영문) 임시 등록 |
+| 1b | `data/raw/2026_KLEAGUE/선수인적정보.xlsx` + `player_info/` CSV | birth_date 기준으로 비한글명 → 한글명 갱신 (xlsx 2026 → 2025 → 2024 순) |
+| 1b_ext | `players` 테이블 + TM squad CSV | birth_date 충돌 선수 팀 기반 disambiguation (93명) |
+| 2 | `data/raw/TM_squads/TM_squads_*.csv` | birth_date → master_id → season_roster 적재 |
+| 3 | `player_match_stats` 전체 | name_kor 기반 master_id 백필 |
+
+> Phase 1c (players 테이블 + jersey/team 기반 역매핑)는 v0.8.0에서 삭제.
+> Phase 1a `name_kor` 직접 등록 방식으로 대체.
+
+### 외국인 선수 한글명 입력 워크플로
+
+TM squad CSV의 `name_kor` 컬럼에 K리그 포털 등록명을 직접 기입한다.
+입력 보조 파일 경로: `data/raw/TM_squads/name_kor_input/foreign_namekor_{season}_{league}.csv`
+
+1. `scrape_tm_squads.py`로 TM_squads CSV 수집
+2. 외국인 행만 별도 CSV로 추출 → `name_kor_input/` 저장 (자동화 스크립트 또는 수동)
+3. `name_kor` 컬럼에 포털 등록명 수기 입력
+4. `name_kor_input/` CSV → `TM_squads_*.csv` 병합 (tm_player_id 매칭)
+5. `build_db.py` 재실행
+
+### 주요 함수
+
+| 함수 | 설명 |
+|---|---|
+| `phase_1a(conn)` | TM_squads CSV → player_master 초기 적재 (name_kor 컬럼 우선) |
+| `phase_1b(conn)` | 선수인적정보.xlsx + player_info → 비한글명 → 한글명 갱신 |
+| `phase_1b_disambig(conn)` | birth_date 충돌 선수 팀 기반 disambiguation |
+| `phase_2(conn)` | TM squad CSV → season_roster 적재 |
+| `phase_3(conn)` | player_match_stats.master_id 백필 |
+| `_upsert_player(cur, ...)` | player_master UPSERT (ON CONFLICT DO UPDATE) |
+| `is_non_korean(s)` | 한글 미포함 이름 판별 (영문·키릴 포함) |
+| `parse_birth_tm(val)` | `"22/07/1996 (29)"` → `"1996-07-22"` |
+| `parse_birth_portal(val)` | Timestamp / `"1996.07.22"` → `"1996-07-22"` |
+
+### 특이사항
+- player_master UNIQUE: `(name_kor, birth_date)` — ETL 매핑 기본 키
+- season_roster UNIQUE: `(master_id, season, team_id)` — jersey_number는 UNIQUE 아님 (여름 이적시장 재배정)
+- Phase 3 동명이인 처리: 동일 name_kor 2개 이상 → season_roster(team_id) 교차 필터
+- 재실행 안전: 멱등 설계 (DROP → CREATE → Phase 순서)
 
 ---
 
@@ -218,12 +230,14 @@ python ETL_ver4.py
 | `safe_get_column(row, names)` | 컬럼명 후보 리스트 중 존재하는 것으로 값 추출 |
 
 ### 적재 대상 테이블
-`competitions` → `teams` → `matches` → `players` → `player_match_stats` 순으로 INSERT OR IGNORE
+`competitions` → `teams` → `matches` → `players` → **`player_master (name_kor 조회)`** → `player_match_stats` 순으로 처리
 
 ### 특이사항
 - `STAT_MAPPING` dict가 한국어 컬럼명 → DB 컬럼명 매핑을 담당 (컬럼명 표기 차이 흡수)
 - `홈여부` 파생: `경기명`의 `(H)` suffix → 1, `(A)` suffix → 0
 - `insert_dataframe()`은 `ETL_backpill_stable.py`와 `ETL_scheduler.py`에서 import하여 사용
+- **v0.7.0**: `master_id` 조회 로직 추가 — `name_kor → player_master` 1순위, `season_roster(team_id)` disambiguation 2순위
+- `player_match_stats` INSERT에 `master_id` 컬럼 포함 (player_id는 레거시로 유지)
 
 ---
 

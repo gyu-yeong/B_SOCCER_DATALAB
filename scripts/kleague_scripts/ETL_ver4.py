@@ -230,6 +230,27 @@ def import_csv_to_db(csv_path):
             player_id = cursor.fetchone()[0]
 
             # ----------------
+            # master_id 조회 (name_kor 기반)
+            # ----------------
+            masters = cursor.execute(
+                "SELECT master_id FROM player_master WHERE name_kor=?", (player_name,)
+            ).fetchall()
+            if len(masters) == 1:
+                master_id = masters[0][0]
+            elif len(masters) > 1:
+                sr = cursor.execute("""
+                    SELECT sr.master_id FROM season_roster sr
+                    WHERE sr.team_id = ?
+                      AND sr.master_id IN (
+                          SELECT master_id FROM player_master WHERE name_kor = ?
+                      )
+                    LIMIT 1
+                """, (team_id, player_name)).fetchone()
+                master_id = sr[0] if sr else None
+            else:
+                master_id = None
+
+            # ----------------
             # stats 생성
             # ----------------
             stat_values = []
@@ -243,8 +264,8 @@ def import_csv_to_db(csv_path):
             # ----------------
             # INSERT 자동 생성
             # ----------------
-            columns = ["match_id", "player_id", "team_id"] + STAT_COLUMNS
-            values = [match_id, player_id, team_id] + stat_values
+            columns = ["match_id", "player_id", "team_id", "master_id"] + STAT_COLUMNS
+            values = [match_id, player_id, team_id, master_id] + stat_values
 
             placeholders = ",".join(["?"] * len(values))
             col_string = ",".join(columns)
@@ -364,6 +385,25 @@ def insert_dataframe(df):
             )
             player_id = cursor.fetchone()[0]
 
+            # master_id 조회 (name_kor 기반)
+            masters = cursor.execute(
+                "SELECT master_id FROM player_master WHERE name_kor=?", (player_name,)
+            ).fetchall()
+            if len(masters) == 1:
+                master_id = masters[0][0]
+            elif len(masters) > 1:
+                sr = cursor.execute("""
+                    SELECT sr.master_id FROM season_roster sr
+                    WHERE sr.team_id = ?
+                      AND sr.master_id IN (
+                          SELECT master_id FROM player_master WHERE name_kor = ?
+                      )
+                    LIMIT 1
+                """, (team_id, player_name)).fetchone()
+                master_id = sr[0] if sr else None
+            else:
+                master_id = None
+
             stat_values = []
 
             for col in STAT_COLUMNS:
@@ -372,8 +412,8 @@ def insert_dataframe(df):
                 )
                 stat_values.append(value)
 
-            columns = ["match_id", "player_id", "team_id"] + STAT_COLUMNS
-            values = [match_id, player_id, team_id] + stat_values
+            columns = ["match_id", "player_id", "team_id", "master_id"] + STAT_COLUMNS
+            values = [match_id, player_id, team_id, master_id] + stat_values
 
             placeholders = ",".join(["?"] * len(values))
             col_string = ",".join(columns)

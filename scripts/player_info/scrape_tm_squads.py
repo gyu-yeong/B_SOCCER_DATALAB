@@ -35,7 +35,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DB_PATH      = PROJECT_ROOT / "database" / "kleague1.db"
-OUTPUT_DIR   = PROJECT_ROOT / "data" / "raw"
+OUTPUT_DIR   = PROJECT_ROOT / "data" / "raw" / "TM_squads"
 
 # ─────────────────────────────────────────────
 # Transfermarkt 설정
@@ -125,8 +125,10 @@ def make_session() -> requests.Session:
 
 
 def tm_saison_id(season: int) -> int:
-    """실제 시즌 → Transfermarkt saison_id (season - 2)"""
-    return season - 2
+    """실제 시즌 → Transfermarkt saison_id
+    TM은 K리그 캘린더 시즌을 (year-1)로 인덱싱: 2024시즌 → saison_id=2023
+    """
+    return season - 1
 
 
 # ─────────────────────────────────────────────
@@ -224,16 +226,17 @@ def scrape_squad(
             resp = sess.get(url, timeout=60)
             soup = BeautifulSoup(resp.text, "html.parser")
 
-            table = soup.select_one(TABLE_SELECTOR)
-            if not table:
+            tables = soup.select(TABLE_SELECTOR)
+            if not tables:
                 raise ValueError("table.items 없음")
 
-            col_map = get_col_map(table)
-
-            results = [
-                row for tr in table.select(ROW_SELECTOR)
-                if (row := _parse_player_row(tr, col_map, team["team_name"], league_label, season))
-            ]
+            results = []
+            for table in tables:
+                col_map = get_col_map(table)
+                results += [
+                    row for tr in table.select(ROW_SELECTOR)
+                    if (row := _parse_player_row(tr, col_map, team["team_name"], league_label, season))
+                ]
 
             print(f"    → {len(results)}명")
             human_sleep(1, 2)
@@ -478,7 +481,7 @@ def main():
 
         print(f"\n  [합계] {len(all_rows)}명")
         save_csv(all_rows, args.season, league_key)
-        load_to_db(all_rows)
+        # DB 적재는 build_db.py Phase 1a·2에서 처리 (이 스크립트에서는 CSV만 저장)
 
     print("\n=== 완료 ===")
 

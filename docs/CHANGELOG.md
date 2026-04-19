@@ -4,6 +4,190 @@
 
 ---
 
+## [0.8.2] - 2026-04-19
+
+### Removed
+- **미사용 스크립트 4종 → `_archive/` 이동**
+  - `scripts/kleague_scripts/ETL_player_master.py` — 미완성 stub (57줄, 실로직 없음)
+  - `scripts/player_info/build_player_master.py` — `build_db.py`로 완전 대체
+  - `scripts/player_info/map_foreign_korean_names.py` — Phase 1c + 외국인 음차명 자동 매핑 방식 폐기, `name_kor` 직접 입력 방식으로 대체
+  - `scripts/player_info/import_korean_names.py` — `map_foreign_korean_names.py` 산출물 적재용, 위와 함께 미사용
+
+### Changed
+- `docs/scripts.md` 현행화 — 아카이브된 스크립트 섹션 제거, 아카이브 경로 안내 추가
+
+---
+
+## [0.8.1] - 2026-04-19
+
+### Added
+- **`patch_homonym_masters.py` 신규**: 동명이인 선수 master_id 수동 패치 스크립트
+  - `(player_name, team_id)` 조합으로 `player_match_stats.master_id` 직접 UPDATE
+  - 대상: 가브리엘(강원/광주), 마테우스(울산/안양) 총 144건
+
+### Data
+- **player_match_stats master_id**: 18,019건 (98%) → **18,163건 (99%)**
+- **미매핑 잔여**: 214건 → **70건** (이상민 동명이인, 윤석영·안재준·임지민·황재환)
+
+---
+
+## [0.8.0] - 2026-04-19
+
+### Changed
+- **`build_db.py` Phase 1a: TM CSV `name_kor` 컬럼 우선 사용**
+  - 외국인 선수에 대해 `name_kor` 컬럼이 채워져 있으면 해당 한글 등록명으로 `player_master` 직접 등록
+  - 미기재 시 기존대로 `name_original`(영문) 임시 등록 → Phase 1b에서 교체
+  - KL1 2024·2025·2026 외국인 선수 한글명 수동 입력(225명) 반영
+
+### Removed
+- **`build_db.py` Phase 1c 완전 삭제**
+  - `players` 테이블 + TM squad jersey/team 기반 역매핑 로직 제거
+  - Phase 1a `name_kor` 직접 등록 방식으로 동일 목적 달성 → Phase 1c 불필요
+
+### Data
+- **player_match_stats master_id**: 17,429건 (95.6%) → **18,019건 (98%)**
+- **미매핑 잔여**: 804건 → **214건** (외국인 TM 미수록 + KL2 미적재 + 동명이인)
+- **player_master**: 1,618명 → 1,650명
+- **season_roster**: 3,130건 → 3,137건
+
+---
+
+## [0.7.5] - 2026-04-13
+
+### Fixed
+- **`build_db.py` Phase 1c 정확도 개선 — 3중 버그 수정**
+  1. `birth_date` 단독 조회 → `name_original + birth_date` 정확 매칭으로 변경
+     - 동일 birth_date 보유 선수가 여러 명일 때 엉뚱한 player_master 엔트리에 이름을 덮어쓰던 문제 해결
+  2. `pm_cands` 중복 삽입 → `master_id` 기준 dict 중복 제거
+     - 같은 선수가 2024·2025 두 시즌 TM CSV에 모두 등재 시 동일 master_id가 두 번 추가되어 `len(pm_cands) == 2` 오판으로 skip되던 문제 해결
+  3. `season` 필터 추가 — pms 활동 시즌 기반으로 TM squad 후보를 시즌 범위로 좁힘
+     - 같은 팀·등번호를 다른 시즌에 다른 선수가 착용한 경우 오매핑 방지
+- **싸박(Pablo Sabbag) 매핑 확정**: birth_date=1997-06-11, 수원FC 2025 → master_id=1893
+
+### Data
+- **Phase 1c 갱신**: 27명 → 32명 (+5명 추가 해소)
+- **player_match_stats master_id**: 17,238건 (94%) → **17,429건 (95.6%)**
+  - 이전 97%와의 차이: 구 Phase 1c가 birth_date 충돌 선수를 잘못된 master_id에 매핑하던 부분이 이번 수정으로 올바르게 skip됨 → 정확도 향상, 수치는 소폭 조정
+- **미매핑 잔여**: 804건 (33명 외국인 TM 미수록·등번호 충돌 + 이상민 동명이인 2명 + 가브리엘 동명이인 2명)
+
+---
+
+## [0.7.4] - 2026-04-12
+
+### Fixed
+- **`build_db.py` Phase 1b 소스 확장**: `선수인적정보.xlsx`(2026 스냅샷) 단독 → `player_info/2025시즌.csv` · `2024시즌.csv` 추가
+  - 2026시즌에 K리그에 없는 선수(해외이적·은퇴)가 영문명으로 player_master에 잔류하던 문제 해결
+  - `_apply_korean_names()` 헬퍼로 다중 소스 공통 로직 분리
+  - 우선순위: xlsx 2026 → player_info 2025 → player_info 2024 (먼저 갱신된 선수는 이후 소스가 덮어쓰지 않음)
+- **`build_db.py` Phase 1b_ext 신규 추가**: birth_date 충돌 선수 팀 기반 disambiguation
+  - Phase 1b에서 동일 birth_date 복수 선수로 갱신 불가했던 한국인 선수 93명 추가 해결
+  - pms 소속팀 → TM squad CSV 교차 → name_original 특정 → player_master UPDATE
+
+### Data
+- **Phase 1b 한글명 갱신**: 747명 → 1,139명 (+392명)
+- **Phase 1b_ext 팀 기반 disambiguation**: +93명
+- **player_match_stats master_id**: 16,695건 (91%) → **17,734건 (97%)**
+- **미매핑**: 1,538건 → 499건 (외국인 TM 미수록 22명 + 동명이인 이상민 2명)
+
+---
+
+## [0.7.3] - 2026-04-12
+
+### Fixed
+- **`scrape_tm_squads.py` 포지션별 테이블 누락 버그**: `select_one("table.items")` → `select("table.items")` 로 수정
+  - TM `plus/1` 뷰는 GK/DEF/MID/FWD 별로 `table.items`가 분리됨 → 기존 코드는 첫 번째 테이블(GK)만 파싱
+  - 수정 후 팀당 수집 인원이 대폭 증가 (포항 2024: 38명 → 60명 등)
+- **`scrape_tm_squads.py` saison_id 오프셋 버그**: `season - 2` → `season - 1` 로 수정
+  - TM은 K리그 캘린더 시즌을 `year - 1`로 인덱싱 (2024시즌 = saison_id=2023)
+  - 기존 코드는 1시즌 이전 데이터를 수집해 파일명과 실제 데이터 불일치 발생
+  - 예: `TM_squads_2024_KL1.csv`가 실제로는 2023 시즌 데이터를 담고 있었음
+- **`scrape_tm_squads.py` OUTPUT_DIR**: `data/raw/` → `data/raw/TM_squads/` 로 수정 (파일 이동 반영)
+- **`scrape_tm_squads.py` load_to_db 제거**: 구버전 스키마 기반 DB 적재 로직 제거 — build_db.py가 담당
+
+### Data — TM_squads CSV 전 시즌 재수집 + build_db.py 재실행
+- **수집량** (행 수): 2024 KL1 495→681, KL2 492→628 / 2025 KL1 681→627, KL2 628→593 / 2026 KL1 627→435, KL2 593→582
+- **player_master**: 1657명 → 1618명 (saison_id 수정으로 시즌 데이터 정확도 개선)
+- **season_roster**: 3286건 → 3250건
+- **player_match_stats master_id**: 17895건 (98%) → **16695건 (91%)**
+  - saison_id 버그 수정으로 시즌 매칭이 실제 시즌 기준으로 재정렬됨 → 단기 확보율 소폭 하락, 정확도 개선
+- **조르지(포항 2024) 수동 등록 가능**: Jorge Teixeira(1999-06-21) 이제 `TM_squads_2024_KL1.csv`에 포함됨
+
+---
+
+## [0.7.2] - 2026-04-12
+
+### Changed
+- **`build_db.py` Phase 1a 소스 교체**: `player_info/{season}시즌.csv` → `TM_squads/TM_squads_*.csv`
+  - 기존 파일들은 모두 2026 소속팀 기준으로 수집된 데이터였음 (시즌별 실제 소속 반영 안 됨)
+  - TM_squads CSV는 시즌별 실제 등록 스쿼드 → 올바른 소스
+  - `name_kor = name_original` (영문/키릴)로 초기 등록 → Phase 1b/1c에서 한글명 교체
+- **TM_squads 파일 이동**: `data/raw/TM_squads_*.csv` → `data/raw/TM_squads/` 디렉터리로 정리
+- **`build_db.py` TM_SQ_DIR 상수 추가**: `data/raw/TM_squads/` 경로를 별도 상수로 분리
+
+### Data
+- **player_master**: 1601명 → 1657명 (+56)
+- **season_roster**: 2631건 → 3286건 (+655, 시즌별 커버리지 개선)
+- **player_match_stats master_id**: 17724건 (97%) → 17895건 (**98%**)
+- **미매핑 선수**: 31명 → 19명 (외국인 16명 + 동명이인 3명)
+
+---
+
+## [0.7.1] - 2026-04-12
+
+### Removed
+- **`season_rosters` 테이블 삭제** — v0.4.0에서 `players.player_id` 기반으로 생성된 구버전 테이블 (965건)
+  - 신버전 `season_roster` (`master_id` 기반, 3286건)로 완전 대체됨
+  - 어떠한 현재 스크립트도 참조하지 않음을 확인 후 DROP
+
+---
+
+## [0.7.0] - 2026-04-12
+
+### Changed — DB 전면 재설계: player_master 재구축 + season_roster 신설
+
+#### 핵심 설계 변경
+- **player_master 재구축**: TM 영문명 + 시장가치 기반 → `name_kor` + `birth_date` 기반으로 전환
+  - 기존 UNIQUE `(name_original, birth_date)` → 신규 UNIQUE `(name_kor, birth_date)`
+  - `name_kor`: 한국인=한글명, 외국인=한글 음차명 (영문/키릴 임시명에서 업데이트)
+  - 불필요 컬럼 제거: `name_original`, `is_korean`, `foot`, `joined`, `signed_from`, `contract_until`, `market_value_eur`
+  - 1601명 확보 (birth_date 100% 채움)
+- **season_roster 재설계**: 기존 `season_rosters (season_year, player_id, team_id)` → 신규 `season_roster (master_id, season, team_id)`
+  - `players` 테이블 FK 제거, `player_master` FK로 직접 참조
+  - UNIQUE: `(master_id, season, team_id)` — jersey_number는 UNIQUE 아님 (여름 이적시장 재배정 가능)
+  - 2631건 적재 (2024·2025·2026 3시즌)
+- **player_match_stats.master_id 추가**: `player_id` 참조 유지하면서 `master_id` 컬럼 신규 추가
+  - 17724/18233건 master_id 확보 (97%)
+  - 미매칭 3%: TM squad CSV 미수집 팀(강원FC 등), 2024·2025 미포함 외국인 선수
+
+#### 구축 소스 및 Phase 전략 (`build_db.py`)
+| Phase | 소스 | 내용 |
+|---|---|---|
+| 1a | `player_info/{season}시즌.csv` | 한국인 한글명 + 외국인 영문명 → player_master |
+| 1b | `선수인적정보.xlsx` (2026 포털) | 외국인 한글 음차명 업데이트 (107명) |
+| 1c | 기존 `players` 테이블 + TM squad CSV | 2024·2025 외국인 음차명 보완 (42명) |
+| 2 | `TM_squads_{season}_KL*.csv` | birth_date → master_id 조회 → season_roster 적재 |
+| 3 | `player_match_stats` 전체 | name_kor 기반 master_id 백필 (97%) |
+
+#### ETL 변경
+- **`ETL_ver4.py`** `import_csv_to_db()` / `insert_dataframe()`: `master_id` 조회 로직 추가
+  - `name_kor → player_master → master_id` 1순위
+  - 동명이인: `season_roster(team_id)` disambiguation 2순위
+  - `player_match_stats` INSERT에 `master_id` 컬럼 추가
+
+### Fixed
+- **is_ascii_name → is_non_korean**: 키릴 문자(세르비아·몬테네그로 선수) 영문명과 동일하게 비한글로 판별하도록 수정
+  - 기존: `str.isascii()` → 키릴 = non-ASCII → UPDATE 스킵
+  - 수정: 한글 유니코드(`\uAC00-\uD7A3`) 미포함 여부 판별
+- **TM squad CSV birth_date 파싱**: `parse_birth_tm` → `parse_birth_portal` 교체 (CSV 이미 YYYY-MM-DD 포맷)
+- **TM_TO_KOR 팀명 보완**: `Ulsan Hyundai`, `Jeju United` 추가 (구 팀명 → no_team 0으로 해소)
+
+### Data
+- **player_master**: 1601명 / birth_date NULL 0명
+- **season_roster**: 2631건 (2024 KL1 344 + KL2 331 / 2025 KL1 540 + KL2 480 / 2026 KL1 503 + KL2 433)
+- **player_match_stats master_id**: 17724/18233건 (97%)
+
+---
+
 ## [0.6.1] - 2026-03-22
 
 ### Fixed
