@@ -17,6 +17,44 @@ DB_PATH = "database/kleague.db"
 # -------------------------
 # 유틸
 # -------------------------
+def get_or_create_competition_id(cursor, year, competition_name):
+    """
+    competitions 테이블 중복 방지.
+    같은 시즌·동일 리그(K리그1/K리그2)는 후원사명·연도 표기가 달라도
+    한 cid로 통합.
+
+    동작:
+      1. 'K리그1' / 'K리그2' 키워드 추출
+      2. (year, LIKE %키워드%)로 기존 cid 조회 → 있으면 그 cid 반환
+      3. 없으면 입력된 이름으로 신규 INSERT
+    """
+    keyword = None
+    if "K리그1" in competition_name:
+        keyword = "K리그1"
+    elif "K리그2" in competition_name:
+        keyword = "K리그2"
+
+    if keyword:
+        row = cursor.execute(
+            "SELECT competition_id FROM competitions "
+            "WHERE year = ? AND competition_name LIKE ?",
+            (year, f"%{keyword}%"),
+        ).fetchone()
+        if row:
+            return row[0]
+
+    # 신규 등록 (슈퍼컵 등 키워드 없는 대회 포함)
+    cursor.execute(
+        "INSERT OR IGNORE INTO competitions (year, competition_name) VALUES (?, ?)",
+        (year, competition_name),
+    )
+    cursor.execute(
+        "SELECT competition_id FROM competitions WHERE year=? AND competition_name=?",
+        (year, competition_name),
+    )
+    return cursor.fetchone()[0]
+
+
 def clean_numeric_value(value):
     if pd.isna(value) or value in ["", "-"]:
         return 0
@@ -131,16 +169,11 @@ def import_csv_to_db(csv_path):
             # ----------------
             # competition
             # ----------------
-            cursor.execute(
-                "INSERT OR IGNORE INTO competitions (year, competition_name) VALUES (?, ?)",
-                (clean_numeric_value(row["대회년도"]), row["대회명"]),
+            competition_id = get_or_create_competition_id(
+                cursor,
+                clean_numeric_value(row["대회년도"]),
+                row["대회명"],
             )
-
-            cursor.execute(
-                "SELECT competition_id FROM competitions WHERE year=? AND competition_name=?",
-                (clean_numeric_value(row["대회년도"]), row["대회명"]),
-            )
-            competition_id = cursor.fetchone()[0]
 
             # ----------------
             # teams
@@ -297,16 +330,11 @@ def insert_dataframe(df):
     for idx, row in df.iterrows():
 
         try:
-            cursor.execute(
-                "INSERT OR IGNORE INTO competitions (year, competition_name) VALUES (?, ?)",
-                (clean_numeric_value(row["대회년도"]), row["대회명"]),
+            competition_id = get_or_create_competition_id(
+                cursor,
+                clean_numeric_value(row["대회년도"]),
+                row["대회명"],
             )
-
-            cursor.execute(
-                "SELECT competition_id FROM competitions WHERE year=? AND competition_name=?",
-                (clean_numeric_value(row["대회년도"]), row["대회명"]),
-            )
-            competition_id = cursor.fetchone()[0]
 
             cursor.execute(
                 "INSERT OR IGNORE INTO teams (team_name) VALUES (?)", (row["팀명"],)

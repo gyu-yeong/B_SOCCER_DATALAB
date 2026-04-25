@@ -304,9 +304,18 @@ python ETL_player_master.py
 
 ### 실행 방법
 ```bash
-python ETL_scheduler.py
+python ETL_scheduler.py                                    # 모든 미적재 과거 경기
+python ETL_scheduler.py --to-round 7                       # 7라운드까지만 수집
+python ETL_scheduler.py --competition K리그2                # K리그2만
+python ETL_scheduler.py --competition K리그2 --year 2024   # 2024 K리그2만
 ```
-파라미터 지정 없이 실행하면 자동으로 미적재 경기를 탐색합니다.
+
+### CLI 인자
+| 인자 | 설명 |
+|------|------|
+| `--to-round N` | 라운드 번호 N 이하만 수집 (기본: 무제한) |
+| `--competition TEXT` | competition_name LIKE 부분 매칭 필터 |
+| `--year YYYY` | 시즌 연도 정확 매칭 필터 |
 
 ### 동작 순서
 1. `print_status()` — schedule 현황 출력 (전체/연결됨/미적재 수)
@@ -336,6 +345,33 @@ COMPETITION_MEET_MAP = {
 (competition_id, round_number, home_team_id, away_team_id)
 ```
 `matches` 테이블의 UNIQUE 제약과 동일 → 1:1 매핑 보장
+
+> **주의:** schedule과 matches의 `competition_id`·`round_number` 형식 불일치 시 연결 실패. v0.8.5에서 `migrate_competitions_dedup.py`로 정리, `ETL_ver4.get_or_create_competition_id()` 헬퍼로 재발 방지.
+
+---
+
+## 5. `migrate_competitions_dedup.py` — competitions 중복 통합 마이그레이션 (일회성)
+
+### 역할
+같은 시즌·리그가 두 cid로 중복 존재해 schedule ↔ matches 조인이 단절된 문제를 정리합니다.
+
+### 실행 방법
+```bash
+python scripts/kleague_scripts/migrate_competitions_dedup.py
+```
+**idempotent** — 재실행 시 중복 없으면 NOOP, 안전합니다.
+
+### 동작
+1. `(year, K리그1/K리그2)` 키로 cid 그룹화 → 중복 검출
+2. matches 보유량이 많은 cid를 canonical로 선택
+3. schedule·matches를 canonical cid로 UPDATE, 빈 cid DELETE
+4. `round_number` 형식 정규화: `R{N}` → `{N}R`
+5. `update_schedule_match_ids()` 실행
+
+### 결과 (v0.8.5 적용 시)
+- 중복 통합: 2024 K리그2, 2026 K리그1
+- round 정규화: 1,403건
+- match_id 연결: 702건
 
 ---
 

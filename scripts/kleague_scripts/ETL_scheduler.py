@@ -13,6 +13,7 @@ ETL_scheduler.py — K리그 배치 스케줄러
 """
 
 import sys
+import argparse
 import sqlite3
 import os
 
@@ -39,6 +40,17 @@ def get_db():
     return sqlite3.connect(DB_PATH)
 
 
+def resolve_meet_value(competition_name):
+    """
+    schedule 테이블의 competition_name이 'K리그2 2024', '하나은행 K리그1' 등
+    연도·스폰서명 포함 형태일 수 있으므로 부분 매칭으로 meet_value 결정.
+    """
+    for key, val in COMPETITION_MEET_MAP.items():
+        if key in competition_name:
+            return val
+    return None
+
+
 def fetch_unscraped_targets():
     """
     오늘 이전 경기 중 match_id가 없는 대회+연도 조합 목록 반환.
@@ -47,8 +59,14 @@ def fetch_unscraped_targets():
     Returns:
         list of dict: [{"year": 2026, "competition_name": "K리그1", "from_round": 1}, ...]
     """
+    # LIKE 부분 매칭: 'K리그2 2024', '하나은행 K리그1' 등 스폰서명·연도 포함 이름도 감지
+    like_clauses = " OR ".join(
+        "competition_name LIKE ?" for _ in COMPETITION_MEET_MAP
+    )
+    like_params = [f"%{key}%" for key in COMPETITION_MEET_MAP]
+
     with get_db() as conn:
-        rows = conn.execute("""
+        rows = conn.execute(f"""
             SELECT
                 CAST(strftime('%Y', match_date) AS INTEGER) AS year,
                 competition_name,
@@ -56,21 +74,24 @@ def fetch_unscraped_targets():
             FROM schedule
             WHERE date(match_date) <= date('now')
               AND match_id IS NULL
-              AND competition_name IN ({})
+              AND ({like_clauses})
             GROUP BY year, competition_name
             ORDER BY year, competition_name
-        """.format(",".join("?" * len(COMPETITION_MEET_MAP))),
-        list(COMPETITION_MEET_MAP.keys())).fetchall()
+        """, like_params).fetchall()
         # SQLite: CAST('34R' AS INTEGER) = 34, CAST('슈퍼컵' AS INTEGER) = 0 → fallback to 1
 
     targets = []
     for year, competition_name, min_round_int in rows:
+        meet_value = resolve_meet_value(competition_name)
+        if meet_value is None:
+            continue  # 매핑 불가 대회 스킵
+
         from_round = max(1, min_round_int or 1)
 
         targets.append({
             "year": year,
             "competition_name": competition_name,
-            "meet_value": COMPETITION_MEET_MAP[competition_name],
+            "meet_value": meet_value,
             "from_round": from_round,
             "min_round_text": f"{from_round}R",
         })
@@ -139,11 +160,27 @@ def print_status():
 # --------------------------------------------------
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--to-round", type=int, default=None,
+                        help="이 라운드까지만 수집 (예: --to-round 7)")
+    parser.add_argument("--competition", type=str, default=None,
+                        help="수집할 대회 키워드 필터 (예: --competition K리그2). "
+                             "competition_name에 해당 문자열이 포함된 대상만 실행.")
+    parser.add_argument("--year", type=int, default=None,
+                        help="수집할 시즌 연도 필터 (예: --year 2024).")
+    args = parser.parse_args()
+
     # 현재 상태 출력
     print_status()
 
     # 미적재 대상 탐색
     targets = fetch_unscraped_targets()
+
+    # --competition / --year 필터 적용
+    if args.competition:
+        targets = [t for t in targets if args.competition in t["competition_name"]]
+    if args.year:
+        targets = [t for t in targets if t["year"] == args.year]
 
     if not targets:
         print("[완료] 미적재 경기 없음. 스크래핑 불필요.")
@@ -170,6 +207,7 @@ if __name__ == "__main__":
                 year_value=t["year"],
                 meet_value=t["meet_value"],
                 from_round=t["from_round"],
+                to_round=args.to_round,
             )
 
             if df.empty:

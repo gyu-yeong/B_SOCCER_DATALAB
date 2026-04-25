@@ -1,3 +1,4 @@
+import os
 import re
 import time
 import random
@@ -11,7 +12,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 from selenium import webdriver
 from bs4 import BeautifulSoup
 from ETL_ver4 import insert_dataframe
@@ -32,8 +33,12 @@ def create_driver():
     options = Options()
     options.page_load_strategy = "eager"
 
+    driver_path = ChromeDriverManager().install()
+    if not driver_path.endswith('.exe'):
+        driver_path = os.path.join(os.path.dirname(driver_path), 'chromedriver.exe')
+
     driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()),
+        service=Service(driver_path),
         options=options
     )
     driver.get("https://data.kleague.com")
@@ -109,9 +114,9 @@ def normalize_to_etl_schema(df):
 # --------------------------------------------------
 # safe select
 # --------------------------------------------------
-def safe_select(driver, select_id, value):
-
-    for _ in range(3):
+def safe_select(driver, select_id, value, retries=5):
+    """드롭다운 선택. StaleElement·Timeout 모두 최대 retries회 재시도."""
+    for attempt in range(retries):
         try:
             select = Select(
                 WebDriverWait(driver, 15).until(
@@ -121,10 +126,12 @@ def safe_select(driver, select_id, value):
             select.select_by_value(value)
             return select
 
-        except StaleElementReferenceException:
-            human_sleep(1, 2)
+        except (StaleElementReferenceException, TimeoutException):
+            wait = (attempt + 1) * 3
+            print(f"  ⚠ safe_select 재시도 {attempt+1}/{retries} ({select_id}={value}, {wait}s 대기)")
+            human_sleep(wait, wait + 2)
 
-    raise Exception(f"{select_id} select 실패")
+    raise Exception(f"{select_id} select 실패 (value={value})")
 
 
 # --------------------------------------------------
@@ -145,7 +152,7 @@ def restore_state(driver, year_value, meet_value, team_value):
 # --------------------------------------------------
 # scraper
 # --------------------------------------------------
-def scrape_match_data(driver, year_value, meet_value, from_round=1):
+def scrape_match_data(driver, year_value, meet_value, from_round=1, to_round=None):
 
     all_table_data = []
     game_counter = 0
@@ -171,33 +178,41 @@ def scrape_match_data(driver, year_value, meet_value, from_round=1):
     # --------------------------------------------------
     for team_value in team_values:
 
-        safe_select(driver, "selectTeamId", team_value)
-        human_sleep(3, 6)
+        try:
+            safe_select(driver, "selectTeamId", team_value)
+            human_sleep(3, 6)
 
-        game_select = Select(
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.ID, "selectGameId"))
+            game_select = Select(
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.ID, "selectGameId"))
+                )
             )
-        )
 
-        game_options = [
-            (o.get_attribute("value"), o.text.strip())
-            for o in game_select.options[1:]
-        ]
+            game_options = [
+                (o.get_attribute("value"), o.text.strip())
+                for o in game_select.options[1:]
+            ]
+
+        except Exception as e:
+            print(f"⚠ 팀 {team_value} 드롭다운 로드 실패 → skip", e)
+            continue
+
+        team_rows = []  # 팀 단위 버퍼 (크래시 시 손실 최소화용)
 
         # --------------------------------------------------
         # game loop
         # --------------------------------------------------
         for game_value, game_label in game_options:
 
-            # from_round 필터: 드롭다운 텍스트에서 라운드 번호 파싱 후 skip
-            if from_round > 1:
-                try:
-                    round_num = int(re.search(r'(\d+)R', game_label).group(1))
-                    if round_num < from_round:
-                        continue
-                except (AttributeError, ValueError):
-                    pass  # 파싱 실패 시 수집 진행
+            # from_round / to_round 필터
+            try:
+                round_num = int(re.search(r'(\d+)R', game_label).group(1))
+                if round_num < from_round:
+                    continue
+                if to_round is not None and round_num > to_round:
+                    continue
+            except (AttributeError, ValueError):
+                pass  # 파싱 실패 시 수집 진행
 
             # ⭐ driver restart (루프 유지형)
             if game_counter != 0 and game_counter % 20 == 0:
@@ -250,7 +265,7 @@ def scrape_match_data(driver, year_value, meet_value, from_round=1):
                 for row in rows[2:-1]:
                     cols = [c.text.strip() for c in row.find_all("td")]
                     cols.extend([year_text, meet_text, team_text, game_text])
-                    all_table_data.append(cols)
+                    team_rows.append(cols)
 
                 game_counter += 1
                 human_sleep(3, 6)
@@ -258,6 +273,11 @@ def scrape_match_data(driver, year_value, meet_value, from_round=1):
             except Exception as e:
                 print("⚠ 경기 수집 실패 → skip", e)
                 continue
+
+        # 팀 완료 → 즉시 적재 (크래시 시 손실 최소화)
+        if team_rows:
+            all_table_data.extend(team_rows)
+            print(f"  [팀 완료] {team_value}: {len(team_rows)}행 버퍼 적재 (누적 {len(all_table_data)}행)")
 
     # --------------------------------------------------
     # dataframe 생성

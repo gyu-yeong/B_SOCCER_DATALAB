@@ -4,6 +4,63 @@
 
 ---
 
+## [0.8.5] - 2026-04-25
+
+### Fixed (CRITICAL)
+- **`competitions` 중복 entry 통합** — schedule ↔ matches 조인 단절 문제 해결
+  - 같은 시즌·리그가 두 cid로 중복 존재해 `update_schedule_match_ids()`가 항상 0건 연결되던 이슈
+  - 통합: `33115('K리그2 2024') → 34786('하나은행 K리그2')`, `33112('K리그1') → 33117('하나은행 K리그1')`
+  - schedule.match_id 연결: 0건 → **702건**
+- **`schedule.round_number` 형식 통일** — `R{N}` → `{N}R` (matches 테이블 형식과 일치)
+  - 1,403건 변환
+
+### Added
+- `scripts/kleague_scripts/migrate_competitions_dedup.py` — competitions 중복 통합 + round 정규화 + match_id 연결 일회성 마이그레이션 (idempotent)
+- `ETL_ver4.get_or_create_competition_id()` — 신규 헬퍼 함수, 'K리그1'/'K리그2' 키워드 LIKE 매칭으로 중복 cid 생성 방지
+
+### Changed
+- `ETL_ver4.insert_dataframe` (2곳) — competition INSERT를 `get_or_create_competition_id()` 호출로 교체
+- `load_schedule.normalize_round` — `f"R{N}"` → `f"{N}R"` (matches 테이블 형식 일치)
+
+### Verified
+- schedule.match_id 연결률: 2024 K리그2 99%, 2024·2025 K리그1 98%, 2026 K리그1 7R까지 적재분 100%
+- 미연결 13건은 PO·승강PO·슈퍼컵 (일정만 존재, matches 라운드 번호 매칭 불가)
+
+---
+
+## [0.8.4] - 2026-04-25
+
+### Data
+- **2024 K리그2 전 시즌(1R~41R) 경기 결과 적재 완료** — `ETL_scheduler.py --competition K리그2 --year 2024`
+  - player_match_stats: 19,902건 → **28,395건** (+8,493건)
+  - 13팀 × 41라운드 전체 수집
+
+### Fixed
+- `ETL_backpill_stable.py`: 팀 루프 레벨 try/except 추가 — 팀 드롭다운 실패 시 해당 팀만 skip
+- `ETL_backpill_stable.py`: 팀 완료마다 버퍼 누적 로그 출력 (진행 상황 가시성 개선)
+- `ETL_scheduler.py`: `--year` CLI 인자 추가 (특정 시즌만 선택 실행)
+- `ETL_scheduler.py`: `fetch_unscraped_targets` SQL을 `IN` 정확 매칭 → `LIKE` 부분 매칭으로 변경
+  - `"K리그2 2024"`, `"하나은행 K리그1"` 등 스폰서명·연도 포함 competition_name도 정상 탐지
+- `ETL_scheduler.py`: `resolve_meet_value()` 헬퍼 추가 — 부분 문자열로 meet_value 결정
+
+---
+
+## [0.8.3] - 2026-04-19
+
+### Data
+- **2026 K리그1 1R~7R 경기 결과 적재 완료** — `ETL_scheduler.py --to-round 7`
+  - player_match_stats: 18,233건 → **19,902건** (+1,669건)
+  - 라운드별 6경기 × 7라운드 = 42경기 / 라운드당 평균 238명
+
+### Fixed
+- `ETL_backpill_stable.py`: `scrape_match_data`에 `to_round` 상한 파라미터 추가
+  - 기존: `from_round`만 존재 → 지정 라운드 이후 전체 수집
+  - 변경: `to_round=None` 추가 → `to_round` 초과 라운드 스킵
+- `ETL_scheduler.py`: `--to-round` CLI 인자 추가 (기본값 None = 상한 없음)
+- `ETL_backpill_stable.py`: `webdriver_manager` NOTICES 파일 반환 버그 우회 (`chromedriver.exe` 경로 보정)
+
+---
+
 ## [0.8.2] - 2026-04-19
 
 ### Removed

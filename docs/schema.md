@@ -358,22 +358,24 @@ UNIQUE: `(competition_id, round_number, home_team_id, away_team_id)`
 
 ---
 
-## 현재 적재 현황 (2026-04-12 기준)
+## 현재 적재 현황 (2026-04-19 기준)
 
 | 테이블 | 건수 | 비고 |
 |---|---|---|
-| competitions | 5 | 2024·2025 K리그1, 2026 K리그1·K리그2·슈퍼컵 |
+| competitions | 6 | 2024·2025 K리그1, 2026 K리그1·K리그2·슈퍼컵·하나은행K리그1 |
 | teams | 29+ | K리그1 13팀 + K리그2 16팀 |
-| matches | 396+ | 2024·2025 K리그1 (각 38라운드) |
+| matches | 438+ | 2024·2025 K리그1 (각 38라운드) + 2026 K리그1 7라운드 (42경기) |
 | players | 786+ | 레거시 테이블 — ETL 시 누적 (master_id 미매핑) |
-| player_master | 1,618 | 2024·2025·2026 3시즌 누적 / birth_date 100% |
-| season_roster | 3,130 | 2024 KL1+KL2 / 2025 KL1+KL2 / 2026 KL1+KL2 |
-| player_match_stats | 18,233 | 2024·2025 K리그1 / master_id 17,429건 (95.6%) |
+| player_master | 1,650 | 2024·2025·2026 3시즌 누적 / birth_date 100% |
+| season_roster | 3,137 | 2024 KL1+KL2 / 2025 KL1+KL2 / 2026 KL1+KL2 |
+| player_match_stats | 28,395 | 2024·2025 K리그1 + 2024 K리그2 + **2026 K리그1 1R~7R** / master_id 17,429건+ |
 | schedule | 471 | 2026 K리그1 198 / K리그2 272 / 슈퍼컵 1 |
 
 **데이터 소스**
 - 2024 K리그1: 포털 스크래핑 (`ETL_backpill_stable.py`)
 - 2025 K리그1 1R~33R: CSV 적재 (`ETL_ver4.py`)
 - 2025 K리그1 34R~38R: 포털 스크래핑 (`ETL_backpill_stable.py`, `from_round=34`)
+- 2024 K리그2 전 시즌(1R~41R): 포털 스크래핑 (`ETL_scheduler.py --competition K리그2 --year 2024`, 2026-04-25)
+- 2026 K리그1 1R~7R: 포털 스크래핑 (`ETL_scheduler.py --to-round 7`, 2026-04-19)
 - 2026 일정: CSV 적재 (`data/raw/2026_KLEAGUE/2026_일정표.csv`)
 - player_master + season_roster: `build_db.py` (v0.7.0)

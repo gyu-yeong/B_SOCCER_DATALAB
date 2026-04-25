@@ -1,5 +1,63 @@
 # TODO List
 
+## 🟠 높음 (정합성 개선)
+
+### 9. 2024 K리그2 player_master 미수록 선수 보강
+- **현황 (2026-04-25)**: 2024 K리그2 player_match_stats 8,493건 중 6,553건만 master_id 매핑 (77.2%) — **1,940건(22.8%) 미매핑**
+- **미매핑 고유 선수**: 115명
+- **출전수 TOP 미매핑 선수**:
+
+  | 선수명 | 팀 | 등번호 | 출전 |
+  |--------|-----|--------|------|
+  | 변경준 | 서울E | #16 | 37 |
+  | 마테우스 | 안양 | #7 | 36 |
+  | 뮬리치 | 수원 | #9 | 35 |
+  | 유상훈 | 성남 | #1 | 34 |
+  | 박태용 | 전남 | #88 | 33 |
+  | 박한근 | 충남아산 | #1 | 33 |
+  | 야고 | 안양 | #10 | 33 |
+  | 최봉진 | 전남 | #1 | 33 |
+  | 김승호 | 충남아산 | #21 | 32 |
+  | 루페타 | 부천 | #42 | 32 |
+  | 이지승 | 안산 | #28 | 32 |
+  | 황준호 | 부산 | #45 | 32 |
+
+- **원인 추정**: 2024 K리그2 전용 선수가 TM 스쿼드 수집 누락 또는 player_master에 미등록. K리그2 13팀 season_roster 559명 vs 매핑된 출전 선수 349명 → **210명 차이**
+- **해결 방법**:
+  ```bash
+  python scripts/player_info/scrape_tm_squads.py --season 2024 --league kl2
+  python scripts/kleague_scripts/build_db.py    # Phase 1c·2·3 재실행
+  ```
+- **검증 쿼리**:
+  ```sql
+  SELECT p.player_name, p.team_name, COUNT(*) games
+  FROM player_match_stats pms JOIN players p ON pms.player_id=p.player_id
+  JOIN matches m ON pms.match_id=m.match_id JOIN competitions c ON m.competition_id=c.competition_id
+  WHERE c.year=2024 AND c.competition_name LIKE '%K리그2%' AND pms.master_id IS NULL
+  GROUP BY p.player_name, p.team_name ORDER BY games DESC;
+  ```
+
+---
+
+### 10. 동명이인 50개 그룹 추가 패치 (K리그2 적재 후 신규 케이스 검출)
+- **현황 (2026-04-25)**: player_master 1,650명 중 동명이인 50개 그룹 검출
+- **주요 그룹**:
+
+  | 이름 | 인원 |
+  |------|------|
+  | 가브리엘 | 4명 |
+  | 김민준 | 4명 |
+  | Min-ho Kim, 김도윤, 김민재, 김성주, 김태환, 김현우, 이상민, 이지훈, 이탈로 | 3명씩 |
+
+- **현재 패치 범위**: `patch_homonym_masters.py`는 K리그1 케이스만 처리 (가브리엘 강원/광주, 마테우스 울산/안양 총 144건)
+- **이슈**: K리그2 적재 후 새로운 동명이인 충돌 발생 가능. master_id 미매핑 또는 잘못된 매핑 위험.
+- **해결 방법**:
+  1. K리그2 출전 동명이인 선수 birth_date·team_id 확인
+  2. `patch_homonym_masters.py`의 `PATCH_RULES`에 케이스 추가
+  3. 재실행 → master_id 정확성 검증
+
+---
+
 ## 🟡 보통 (품질 개선)
 
 ### 1. player_match_stats.master_id 미매핑 0.4% (70건) 보완
