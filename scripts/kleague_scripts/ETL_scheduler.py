@@ -161,6 +161,8 @@ def print_status():
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("--from-round", type=int, default=None,
+                        help="이 라운드부터 수집 (지정 시 자동 from_round 무시)")
     parser.add_argument("--to-round", type=int, default=None,
                         help="이 라운드까지만 수집 (예: --to-round 7)")
     parser.add_argument("--competition", type=str, default=None,
@@ -202,11 +204,15 @@ if __name__ == "__main__":
         for t in targets:
             print(f"\n[스크래핑 시작] {t['year']} {t['competition_name']} (from {t['min_round_text']})")
 
+            effective_from = args.from_round if args.from_round else t["from_round"]
+            if args.from_round:
+                print(f"  [override] --from-round={args.from_round} 적용 (자동값 {t['from_round']} 무시)")
+
             df = scrape_match_data(
                 driver,
                 year_value=t["year"],
                 meet_value=t["meet_value"],
-                from_round=t["from_round"],
+                from_round=effective_from,
                 to_round=args.to_round,
             )
 

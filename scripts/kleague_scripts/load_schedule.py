@@ -55,9 +55,17 @@ def safe_int(val: str):
 
 
 def get_or_create_competition(cur: sqlite3.Cursor, year: int, info: str) -> tuple[int, str]:
-    """competitions 테이블에서 (year, info 키워드)로 competition 조회. 없으면 INSERT."""
-    # ETL 스크래핑 시 후원사명이 붙을 수 있으므로 LIKE 검색
-    keyword = "K리그1" if "1" in info else "K리그2"
+    """competitions 테이블 조회·등록. 후원사명·연도 표기 차이를 LIKE로 흡수."""
+    # 키워드 추출: K리그1/K리그2/슈퍼컵
+    if "K리그1" in info:
+        keyword = "K리그1"
+    elif "K리그2" in info:
+        keyword = "K리그2"
+    elif "슈퍼컵" in info:
+        keyword = "슈퍼컵"
+    else:
+        keyword = info  # 알 수 없는 대회는 그대로
+
     row = cur.execute(
         "SELECT competition_id, competition_name FROM competitions "
         "WHERE year = ? AND competition_name LIKE ?",
@@ -92,18 +100,29 @@ def load_csv(
     year: int,
     team_map: dict[str, int],
 ) -> tuple[int, int, int]:
-    """단일 CSV 적재. (inserted, skipped, unmapped) 반환"""
+    """단일 CSV 적재. (inserted, skipped, unmapped) 반환
+
+    각 row의 INFO 컬럼을 기준으로 competition을 분리 적재.
+    info_label은 INFO 컬럼이 비어있을 때만 fallback으로 사용.
+    (kleague1_2026.csv처럼 한 파일에 K리그1+K리그2가 섞여있는 경우 대응)
+    """
     fpath = os.path.join(SCHED_DIR, fname)
     if not os.path.exists(fpath):
         print(f"  ⚠ 파일 없음: {fpath}")
         return 0, 0, 0
 
-    competition_id, competition_name = get_or_create_competition(cur, year, info_label)
     inserted = skipped = unmapped = 0
+    comp_cache: dict[str, tuple[int, str]] = {}  # info_value → (cid, name)
 
     with open(fpath, encoding="utf-8-sig") as fp:
         reader = csv.DictReader(fp)
         for row in reader:
+            # INFO 컬럼 우선, 비어있으면 파일 단위 label fallback
+            info_value = (row.get("INFO") or "").strip() or info_label
+            if info_value not in comp_cache:
+                comp_cache[info_value] = get_or_create_competition(cur, year, info_value)
+            competition_id, competition_name = comp_cache[info_value]
+
             home_name = row.get("HOME", "").strip()
             away_name = row.get("AWAY", "").strip()
             round_num  = normalize_round(row.get("ROUND", ""))

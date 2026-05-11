@@ -4,6 +4,27 @@
 
 ---
 
+## [0.8.6] - 2026-05-11
+
+### Fixed (CRITICAL)
+- **`kleague1_2026.csv` 혼합 적재 문제 해결** — 파일에 K리그1(198)·K리그2(272)·슈퍼컵(1)이 섞여 있는데 모두 K리그1으로 적재되던 이슈
+  - `load_csv()`: 파일 단위 hardcoded label 대신 **row별 INFO 컬럼**으로 competition 결정 (info_label은 INFO가 빈 row의 fallback으로만 사용)
+  - `get_or_create_competition()`: 키워드 추출 로직 개선 — `"1" in info` 단순 체크 → `K리그1/K리그2/슈퍼컵` 명시적 매칭 (이전 로직은 "슈퍼컵"을 K리그2로 잘못 분류)
+- **2026 schedule 재적재 결과**:
+  - cid=33117 (하나은행 K리그1): 471 → **198건**
+  - cid=33113 (K리그2): 0 → **272건** (신규 분리)
+  - cid=33114 (K리그 슈퍼컵): 0 → **1건** (신규 분리)
+- schedule.match_id 재연결: 1R~7R × 6경기 = 42건 정상 유지
+
+### Added
+- `ETL_scheduler.py`: `--from-round N` CLI 인자 추가 (자동 from_round 무시하고 강제 지정)
+  - 사용 예: 자동값이 1로 잡히지만 8R부터 적재하고 싶을 때 `--from-round 8`
+
+### Backup
+- `database/kleague.db.bak_reload_2026` 생성 (2026 schedule 삭제·재적재 전 시점)
+
+---
+
 ## [0.8.5] - 2026-04-25
 
 ### Fixed (CRITICAL)

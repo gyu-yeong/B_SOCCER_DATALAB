@@ -1,5 +1,33 @@
 # TODO List
 
+## 🔵 진행 예정 (적재 작업)
+
+### A. 2026 K리그1 8R~12R 적재
+- **현황 (2026-05-11)**: schedule cid=33117 / 8R~13R 미적재과거 6건씩 (현 시점 기준 12R까지가 경기 완료 분)
+- **선결 조건**: ✅ v0.8.6에서 schedule 재적재 + match_id 정합성 정상화 완료
+- **실행**:
+  ```bash
+  python scripts/kleague_scripts/ETL_scheduler.py \
+    --competition K리그1 --year 2026 --from-round 8 --to-round 12
+  ```
+
+### B. 2026 K리그2 전체 적재
+- **현황 (2026-05-11)**: schedule cid=33113 / 272건 등재 / matches 0건
+- **선결 조건**: ✅ v0.8.6에서 K리그2 cid 분리 완료
+- **실행**:
+  ```bash
+  python scripts/kleague_scripts/ETL_scheduler.py --competition K리그2 --year 2026
+  ```
+
+### C. 2025 K리그2 전체 적재
+- **현황**: schedule 275건 등재 / matches 0건 (이전 세션에서 대상으로만 등록되고 미실행)
+- **실행**:
+  ```bash
+  python scripts/kleague_scripts/ETL_scheduler.py --competition K리그2 --year 2025
+  ```
+
+---
+
 ## 🟠 높음 (정합성 개선)
 
 ### 9. 2024 K리그2 player_master 미수록 선수 보강
