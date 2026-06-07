@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<!-- v3.0 | 2026-06-03 | 레퍼런스: docs/player_comparison_spec.md (1안 히트맵) | 변경: 필터 테두리 콘텐츠폭 축소·옆 빠른검색 추가·2레벨 전체선택/해제·히트맵 가로 스크롤(반응형) -->
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K리그 선수 비교 — 1안 히트맵</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800&family=Noto+Sans+KR:wght@300;400;500;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-base:#0A0A0A;--bg-elevated:#121212;--surface-card:#1C1C1C;--surface-hover:#303030;
+    --border-dark:#767676;--accent:#001C48;--accent-bar:#2E5FC0;--heat:46,95,192;
+    --text-primary:#FFFFFF;--text-secondary:rgba(255,255,255,.6);--text-muted:#737373;--text-caption:#8E8E8E;
+    --font-head:"Montserrat","Noto Sans KR",sans-serif;--font-body:"Noto Sans KR",Arial,sans-serif;--font-num:"Roboto","Noto Sans KR",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg-base);color:var(--text-primary);font-family:var(--font-body);-webkit-font-smoothing:antialiased}
+
+  /* COMPONENT: TopNav */
+  .topnav{background:var(--bg-elevated);height:64px;display:flex;align-items:center;padding:0 40px;gap:40px;border-bottom:1px solid #000}
+  .topnav .logo{font-family:var(--font-head);font-weight:800;letter-spacing:.04em;font-size:20px}
+  .topnav .menu{display:flex;gap:28px;font-size:14px;color:var(--text-secondary)}
+  .topnav .menu .active{color:var(--text-primary);font-weight:700}
+  .topnav .chip{margin-left:auto;background:var(--surface-hover);color:var(--text-secondary);font-size:12px;padding:6px 12px;border-radius:4px}
+  /* /COMPONENT: TopNav */
+
+  /* COMPONENT: Hero */
+  .hero{position:relative;overflow:hidden;background:var(--bg-base);padding:44px 40px 28px}
+  .hero::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,transparent 0 60px,rgba(255,255,255,.025) 60px 120px);pointer-events:none}
+  .hero h1{font-family:var(--font-head);font-weight:800;font-size:34px;letter-spacing:.02em;text-transform:uppercase}
+  .hero p{color:var(--text-secondary);margin-top:8px;font-size:14px}
+  /* /COMPONENT: Hero */
+
+  .wrap{padding:24px 40px 80px;max-width:1280px}
+
+  /* COMPONENT: ControlBar (필터 + 빠른검색) — 테두리는 콘텐츠 폭까지만 */
+  .controlbar{display:flex;gap:16px;align-items:stretch;flex-wrap:wrap;margin-bottom:18px}
+  .filters{background:var(--surface-card);border:1px solid #000;border-radius:10px;padding:18px 22px;display:flex;flex-direction:column;gap:14px;width:fit-content}
+  .frow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .flbl{font-family:var(--font-head);font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-secondary);min-width:104px}
+  .seg{font-size:13px;color:var(--text-secondary);background:var(--bg-elevated);border:1px solid var(--border-dark);padding:8px 18px;border-radius:20px;cursor:pointer}
+  .seg.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+  .dd{position:relative;display:inline-block}
+  .dd-btn{background:var(--bg-elevated);border:1px solid var(--border-dark);color:#fff;font-family:var(--font-body);font-size:13px;padding:9px 14px;border-radius:6px;cursor:pointer;min-width:210px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+  .dd-panel{position:absolute;z-index:20;top:calc(100% + 6px);left:0;background:var(--surface-card);border:1px solid var(--border-dark);border-radius:8px;padding:6px;min-width:230px;box-shadow:0 12px 34px rgba(0,0,0,.55)}
+  .dd-tools{display:flex;gap:6px;padding:2px 4px 8px;margin-bottom:6px;border-bottom:1px solid #000}
+  .dd-tools button{flex:1;font-size:11px;background:var(--bg-elevated);border:1px solid var(--border-dark);color:var(--text-secondary);border-radius:6px;padding:6px;cursor:pointer}
+  .dd-tools button:hover{background:var(--surface-hover);color:#fff}
+  .dd-panel label{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:6px;font-size:13px;cursor:pointer}
+  .dd-panel label:hover{background:var(--surface-hover)}
+  .dd-panel input{accent-color:var(--accent-bar);width:15px;height:15px}
+  .sidebox{background:var(--surface-card);border:1px solid #000;border-radius:10px;padding:18px 22px;display:flex;flex-direction:column;gap:8px;min-width:300px;justify-content:center}
+  .sidebox .flbl{min-width:auto}
+  .sidebox input{background:var(--bg-elevated);border:1px solid var(--border-dark);color:#fff;font-family:var(--font-body);font-size:13px;padding:10px 12px;border-radius:6px;width:100%}
+  .sidebox .hint{color:var(--text-muted);font-size:11px}
+  /* /COMPONENT: ControlBar */
+
+  /* COMPONENT: UnitToggle (기본 90분당) */
+  .toprow{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+  .unit{display:inline-flex;background:var(--bg-elevated);border:1px solid var(--border-dark);border-radius:8px;padding:4px}
+  .unit button{font-family:var(--font-body);font-size:13px;color:var(--text-secondary);background:none;border:none;padding:9px 22px;border-radius:6px;cursor:pointer}
+  .unit button.on{background:var(--accent);color:#fff;font-weight:700}
+  /* /COMPONENT: UnitToggle */
+
+  /* COMPONENT: HeatmapGrid (반응형 가로 스크롤) */
+  .matrixhead{display:flex;align-items:center;justify-content:space-between;margin:0 0 14px}
+  .grid-title{font-family:var(--font-head);font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary)}
+  .addbtn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-family:var(--font-body);font-size:13px;font-weight:700;cursor:pointer}
+  .addbtn:hover{background:#0a2f6e}
+  .heatscroll{overflow-x:auto}
+  table.heat{border-collapse:separate;border-spacing:6px;width:100%;min-width:620px}
+  table.heat th,table.heat td{padding:0}
+  table.heat thead th{vertical-align:bottom}
+  .ph{position:relative;background:var(--surface-card);border:1px solid #000;border-radius:10px;padding:14px;text-align:center;min-width:150px}
+  .ph .rm{position:absolute;top:8px;right:10px;color:var(--text-muted);font-size:12px;cursor:pointer}
+  .ph .rm:hover{color:#fff}
+  .ph .nm{font-family:var(--font-head);font-weight:700;font-size:16px}
+  .ph .meta{color:var(--text-secondary);font-size:12px;margin-top:3px}
+  .ph .meta2{color:var(--text-muted);font-size:11px;margin-top:1px}
+  .ph .badge{display:inline-block;width:34px;height:34px;line-height:34px;border-radius:50%;background:var(--accent);color:#fff;font-family:var(--font-head);font-weight:800;margin-bottom:8px}
+  .rowlabel{text-align:left;color:var(--text-secondary);font-size:13px;font-weight:500;padding-right:10px !important;white-space:nowrap}
+  .cell{border-radius:8px;text-align:center;padding:16px 8px;font-family:var(--font-num);font-weight:700;font-size:20px;position:relative;border:1px solid rgba(255,255,255,.04);min-width:150px}
+  .cell .star{position:absolute;top:6px;right:8px;color:#FFD24A;font-size:12px}
+  .cell small{display:block;font-family:var(--font-body);font-weight:400;font-size:10px;color:var(--text-secondary);margin-top:2px}
+  .legend{display:flex;align-items:center;gap:10px;margin-top:18px;color:var(--text-muted);font-size:11px}
+  .legend .bar{height:10px;width:160px;border-radius:5px;background:linear-gradient(90deg,#1C1C1C,rgba(46,95,192,1))}
+  .emptynote{color:var(--text-muted);font-size:13px;padding:20px 0}
+  /* /COMPONENT: HeatmapGrid */
+
+  /* COMPONENT: AddPlayerModal */
+  .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;z-index:50}
+  .backdrop[hidden]{display:none}
+  .modal{background:var(--surface-card);border:1px solid var(--border-dark);border-radius:14px;width:460px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+  .modal .mh{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid #000;font-family:var(--font-head);font-weight:700;font-size:15px}
+  .modal .mh .x{cursor:pointer;color:var(--text-secondary);font-size:16px}
+  .crumbs{display:flex;gap:6px;align-items:center;padding:12px 20px;font-size:12px;color:var(--text-muted);flex-wrap:wrap;border-bottom:1px solid #000}
+  .crumbs b{color:var(--accent-bar);cursor:pointer;font-weight:700}
+  .crumbs .sep{color:var(--text-muted)}
+  .mstep{padding:12px 20px 4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary);font-family:var(--font-head);font-weight:700}
+  .mlist{overflow:auto;padding:8px 12px 14px}
+  .mlist .it{padding:13px 14px;border-radius:8px;cursor:pointer;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+  .mlist .it:hover{background:var(--surface-hover)}
+  .mlist .it .sub{color:var(--text-muted);font-size:12px}
+  /* /COMPONENT: AddPlayerModal */
+</style>
+</head>
+<body>
+
+<!-- COMPONENT: TopNav -->
+<nav class="topnav">
+  <span class="logo">K LEAGUE <span style="color:var(--text-muted);font-weight:500">DATALAB</span></span>
+  <div class="menu"><span>기록</span><span class="active">선수 비교</span><span>팀</span><span>일정/결과</span></div>
+  <span class="chip">KR ▾</span>
+</nav>
+<!-- /COMPONENT: TopNav -->
+
+<!-- COMPONENT: Hero -->
+<header class="hero">
+  <h1>PLAYER COMPARISON</h1>
+  <p>선수를 선택하고 스탯을 비교하세요 · 1안 그리드 히트맵</p>
+</header>
+<!-- /COMPONENT: Hero -->
+
+<div class="wrap">
+
+  <!-- COMPONENT: ControlBar -->
+  <div class="controlbar">
+    <section class="filters">
+      <div class="frow">
+        <span class="flbl">스탯 카테고리</span>
+        <span class="seg on" data-cat="슈팅" onclick="selectCat('슈팅')">슈팅</span>
+        <span class="seg" data-cat="패스" onclick="selectCat('패스')">패스</span>
+        <span class="seg" data-cat="수비" onclick="selectCat('수비')">수비</span>
+      </div>
+      <div class="frow">
+        <span class="flbl">세부 스탯</span>
+        <div class="dd" id="dd">
+          <button class="dd-btn" id="ddBtn" onclick="toggleDD()"><span id="ddLabel">세부 스탯</span><span>▾</span></button>
+          <div class="dd-panel" id="ddPanel" hidden></div>
+        </div>
+      </div>
+    </section>
+    <section class="sidebox">
+      <span class="flbl">선수 빠른 추가</span>
+      <input list="rosterList" id="quickSearch" placeholder="선수 이름 검색…" onchange="quickAdd(this.value)" oninput="if(ROSTER_FLAT[this.value]){quickAdd(this.value)}">
+      <datalist id="rosterList"></datalist>
+      <span class="hint">이름을 알면 바로 추가 · 단계별 선택은 “+ 선수 추가”</span>
+    </section>
+  </div>
+  <!-- /COMPONENT: ControlBar -->
+
+  <!-- COMPONENT: UnitToggle -->
+  <div class="toprow">
+    <div class="unit" id="unit">
+      <button data-u="total">전체 합계</button>
+      <button data-u="per90" class="on">90분당</button>
+      <button data-u="pct">백분위</button>
+    </div>
+    <span style="color:var(--text-muted);font-size:12px" id="count">선택 0/3 · 최대 3명</span>
+  </div>
+  <!-- /COMPONENT: UnitToggle -->
+
+  <!-- COMPONENT: HeatmapGrid -->
+  <div class="matrixhead">
+    <span class="grid-title">Comparison Matrix · 행=스탯 / 열=선수</span>
+    <button class="addbtn" id="addBtn" onclick="openModal()">+ 선수 추가</button>
+  </div>
+  <div class="heatscroll">
+    <table class="heat">
+      <thead><tr id="head"></tr></thead>
+      <tbody id="body"></tbody>
+    </table>
+  </div>
+  <div class="legend"><span>낮음</span><span class="bar"></span><span>높음</span><span style="margin-left:14px">★ = 선택 선수 중 최고값</span></div>
+  <!-- /COMPONENT: HeatmapGrid -->
+</div>
+
+<!-- COMPONENT: AddPlayerModal -->
+<div class="backdrop" id="modal" hidden>
+  <div class="modal">
+    <div class="mh"><span>선수 / 팀 추가</span><span class="x" onclick="closeModal()">✕</span></div>
+    <div class="crumbs" id="crumbs"></div>
+    <div class="mstep" id="mstep"></div>
+    <div class="mlist" id="mlist"></div>
+  </div>
+</div>
+<!-- /COMPONENT: AddPlayerModal -->
+
+<script src="comparison-data.js"></script>
+<script>
+let selectedCat="슈팅";
+let selectedStats=[...CAT_STATS[selectedCat]];
+let unit="per90";
+let selected=[
+  {season:"2025",league:"K리그1",team:"울산 HD",name:"주민규",pos:"FW"},
+  {season:"2025",league:"K리그1",team:"전북 현대",name:"전진우",pos:"FW"},
+  {season:"2025",league:"K리그1",team:"포항 스틸러스",name:"이호재",pos:"FW"}
+];
+
+function fmt(v){return unit==="per90"?(Math.round(v*100)/100).toFixed(2):Math.round(v)}
+
+/* ===== 스탯 필터 ===== */
+function selectCat(c){
+  selectedCat=c;selectedStats=[...CAT_STATS[c]];
+  document.querySelectorAll(".seg[data-cat]").forEach(b=>b.classList.toggle("on",b.dataset.cat===c));
+  buildDD();render();
+}
+function buildDD(){
+  const boxes=CAT_STATS[selectedCat].map(s=>
+    `<label><input type="checkbox" ${selectedStats.includes(s)?"checked":""} onchange="toggleStat('${s}')">${s}</label>`).join("");
+  document.getElementById("ddPanel").innerHTML=
+    `<div class="dd-tools"><button onclick="allStats()">전체 선택</button><button onclick="clearStats()">전체 해제</button></div>`+boxes;
+  document.getElementById("ddLabel").textContent=`세부 스탯 ${selectedStats.length}개 선택`;
+}
+function toggleDD(){const p=document.getElementById("ddPanel");p.hidden=!p.hidden;}
+function toggleStat(s){
+  selectedStats.includes(s)?selectedStats=selectedStats.filter(x=>x!==s):selectedStats=CAT_STATS[selectedCat].filter(x=>selectedStats.includes(x)||x===s);
+  buildDD();render();
+}
+function allStats(){selectedStats=[...CAT_STATS[selectedCat]];buildDD();render();}
+function clearStats(){selectedStats=[];buildDD();render();}
+document.addEventListener("click",e=>{if(!document.getElementById("dd").contains(e.target))document.getElementById("ddPanel").hidden=true;});
+
+/* ===== 단위 ===== */
+document.getElementById("unit").addEventListener("click",e=>{
+  if(e.target.tagName!=="BUTTON")return;
+  [...e.currentTarget.children].forEach(b=>b.classList.remove("on"));
+  e.target.classList.add("on");unit=e.target.dataset.u;render();
+});
+
+/* ===== 선수 추가/제거 ===== */
+function rm(i){selected.splice(i,1);render();}
+function addPlayer(p){
+  if(selected.length>=3)return;
+  if(selected.some(q=>q.season===p.season&&q.league===p.league&&q.team===p.team&&q.name===p.name))return;
+  selected.push(p);render();
+}
+function quickAdd(v){const rec=ROSTER_FLAT[v];if(!rec)return;addPlayer(rec);document.getElementById("quickSearch").value="";}
+function buildRosterList(){document.getElementById("rosterList").innerHTML=Object.keys(ROSTER_FLAT).map(k=>`<option value="${k}">`).join("");}
+
+/* ===== 모달 (시즌→리그→팀→선수) ===== */
+let M={season:null,league:null,team:null};
+function openModal(){if(selected.length>=3)return;M={season:null,league:null,team:null};document.getElementById("modal").hidden=false;renderModal();}
+function closeModal(){document.getElementById("modal").hidden=true;}
+function crumbPick(level){if(level==="season"){M.season=M.league=M.team=null}if(level==="league"){M.league=M.team=null}if(level==="team"){M.team=null}renderModal();}
+function pick(key,val){
+  if(key==="player"){addPlayer({season:M.season,league:M.league,team:M.team,name:val.n,pos:val.p});closeModal();return;}
+  M[key]=val;if(key==="season"){M.league=M.team=null}if(key==="league"){M.team=null}renderModal();
+}
+function renderModal(){
+  const c=[];
+  c.push(M.season?`<b onclick="crumbPick('season')">${M.season} 시즌</b>`:`<span style="color:#fff">시즌</span>`);
+  if(M.season)c.push('<span class="sep">▸</span>'+(M.league?`<b onclick="crumbPick('league')">${M.league}</b>`:`<span style="color:#fff">리그</span>`));
+  if(M.league)c.push('<span class="sep">▸</span>'+(M.team?`<b onclick="crumbPick('team')">${M.team}</b>`:`<span style="color:#fff">팀</span>`));
+  if(M.team)c.push('<span class="sep">▸</span><span style="color:#fff">선수</span>');
+  document.getElementById("crumbs").innerHTML=c.join(" ");
+  let step,items;
+  if(!M.season){step="시즌 선택";items=Object.keys(ROSTER).map(s=>({label:s+" 시즌",on:()=>pick("season",s)}));}
+  else if(!M.league){step="리그 선택";items=Object.keys(ROSTER[M.season]).map(l=>({label:l,on:()=>pick("league",l)}));}
+  else if(!M.team){step="팀 선택";items=Object.keys(ROSTER[M.season][M.league]).map(t=>({label:t,on:()=>pick("team",t)}));}
+  else {step="선수 선택";items=ROSTER[M.season][M.league][M.team].map(pl=>({label:pl[0],sub:pl[1],on:()=>pick("player",{n:pl[0],p:pl[1]})}));}
+  document.getElementById("mstep").textContent=step;
+  const list=document.getElementById("mlist");list.innerHTML="";
+  items.forEach(it=>{const d=document.createElement("div");d.className="it";d.innerHTML=`<span>${it.label}</span>${it.sub?`<span class="sub">${it.sub}</span>`:'<span class="sub">▸</span>'}`;d.onclick=it.on;list.appendChild(d);});
+}
+
+/* ===== 히트맵 렌더 ===== */
+function render(){
+  document.getElementById("count").textContent=`선택 ${selected.length}/3 · 최대 3명`;
+  document.getElementById("addBtn").style.display=selected.length<3?"":"none";
+
+  document.getElementById("head").innerHTML='<th></th>'+selected.map((p,i)=>
+    `<th><div class="ph"><span class="rm" onclick="rm(${i})">✕</span><span class="badge">${p.name.charAt(0)}</span>
+      <div class="nm">${p.name}</div><div class="meta">${p.team} · ${p.pos}</div><div class="meta2">${p.season} · ${p.league}</div></div></th>`).join("");
+
+  if(!selected.length){document.getElementById("body").innerHTML=`<tr><td colspan="2" class="emptynote">선수를 추가하세요</td></tr>`;return;}
+  if(!selectedStats.length){document.getElementById("body").innerHTML=`<tr><td class="emptynote" colspan="${selected.length+1}">세부 스탯을 1개 이상 선택하세요</td></tr>`;return;}
+
+  document.getElementById("body").innerHTML=selectedStats.map(s=>{
+    const vals=selected.map(p=>val(p,s,unit));
+    const max=Math.max(...vals),min=Math.min(...vals);
+    return `<tr><td class="rowlabel">${s}</td>`+selected.map((p,i)=>{
+      const v=vals[i];
+      const norm=unit==="pct"?v/100:(max===min?1:(v-min)/(max-min));
+      const a=(0.12+0.88*norm).toFixed(3);
+      const best=v>=max;
+      const suffix=unit==="pct"?'<small>percentile</small>':(unit==="per90"?'<small>per 90</small>':'');
+      return `<td><div class="cell" style="background:rgba(var(--heat),${a})">${best?'<span class="star">★</span>':''}${fmt(v)}${suffix}</div></td>`;
+    }).join("")+'</tr>';
+  }).join("");
+}
+
+buildDD();buildRosterList();render();
+</script>
+</body>
+</html>
