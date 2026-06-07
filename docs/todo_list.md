@@ -88,6 +88,19 @@
 
 ## 🟡 보통 (품질 개선)
 
+### 0. 웹 구현 기술 스택 정본(SSoT) 확정
+- **현황 (2026-06-03)**: 디자인 문서 간 본격 구현 스택이 불일치 — 본격 웹디자인 착수 전 결정 필요
+  - `README.md` + `docs/kleague-design-agent.md`: **Next.js 14 + D3.js + PostgreSQL + Redis**
+  - `docs/WEBDESIGN_GUIDE.md` §6·§8: React → Streamlit / Chart.js·Recharts / PostgreSQL 지향
+  - (구) `docs/WEBDESIGN_GUIDE_PART2.md`: Vite+React + Recharts + SQLite → **2026-06-03 폐기(삭제) 완료**
+- **정리 완료분 (2026-06-03)**:
+  - `WEBDESIGN_GUIDE_PART2.md` 삭제 (디자인 가이드 아닌 구현 계획서 + git 미추적 + 내부 경로 모순)
+  - 백그라운드 세션 worktree 3개(`claude/elated-einstein`·`elegant-blackwell`·`strange-ramanujan`) + 브랜치 제거 (미병합 디자인 편집 폐기)
+  - `WEBDESIGN_GUIDE.md`에 스택 미확정 경고 배너 추가 + §7 산출물 인벤토리 동기화
+- **해결 방법**: 정본 스택 1개 확정 → `WEBDESIGN_GUIDE.md` §6·§8, `README.md`, `kleague-design-agent.md` 일괄 동기화 → GUIDE 상단 경고 배너 삭제
+
+---
+
 ### 1. player_match_stats.master_id 미매핑 0.4% (70건) 보완
 - **현황 (2026-04-19)**: build_db.py + patch_homonym_masters.py 실행 후 18,233건 중 18,163건 (99%) master_id 확보. 70건 미매핑 (5명).
 - **미매핑 원인**:

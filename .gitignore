@@ -1,6 +1,10 @@
 # DB 파일 (재생성 가능)
 database/*.db
 database/*.db.bak
+database/*.bak*
+
+# 생성 산출물 (재생성 가능)
+reports/
 
 # 수집 데이터 (재생성 가능)
 data/raw/

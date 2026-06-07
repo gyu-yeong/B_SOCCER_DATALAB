@@ -2,6 +2,37 @@
 
 ## [Unreleased]
 
+### Changed (2026-06-03) — 비교 시안 v3.0 (필터 폭·빠른검색·전체선택·반응형·swarm)
+- **스탯 필터 테두리 콘텐츠 폭으로 축소** — `.filters` `width:fit-content`, 풀폭 카드 폐기 (1·2안)
+- **필터 옆 빠른 검색 추가** — `선수 빠른 추가` 입력(네이티브 `datalist` 자동완성, `ROSTER_FLAT` 기반). 캐스케이딩 모달의 빠른 경로 보완
+- **2레벨 드롭다운에 전체 선택 / 전체 해제** 버튼 추가
+- **반응형** — 2안 카드 그리드 `repeat(auto-fit,minmax(260px,300px))`, 1안 히트맵은 `.heatscroll` 가로 스크롤(min-width 620)
+- **2안 백분위 모드: 가로 swarm 차트** — 막대 대신, 스탯별 0~100 백분위 축에 분포를 점으로 표시. **beeswarm 패킹**(120점, 레이아웃 후 px 단위 충돌 회피 `placeSwarmDots`)으로 조밀하게 표현하고, 선택 선수(최대 3명, `PCOLORS` 색 구분)는 **색 링 + 연결선 + 이름·백분위 라벨 핀**으로 하이라이트. 0/25/50/75/100 축·격자선. resize 시 재배치. `comparison-data.js`에 `ROSTER_FLAT`·`PCOLORS` 추가
+- 단위 total/per90 → 카드 바차트, pct → swarm 으로 2안 렌더 분기
+
+### Changed (2026-06-03) — 비교 시안 v2.0 (필터·레이아웃·선수추가 흐름)
+- **스탯 필터 타이틀 하단 이동** — 1레벨(슈팅/패스/수비) 버튼 → 2레벨 **드롭다운 체크리스트**(다중 선택, 기본 전체)로 변경. 기존 칩 나열 방식 폐기
+- **단위 토글 기본값 90분당**으로 변경 (이전 전체합계)
+- **선수 카드 정비** — team·season을 셀렉트→**텍스트** 표시, 포지션 옆 'K리그 데이터랩' 라벨 제거
+- **선수 추가 캐스케이딩 모달** — `시즌 → 리그 → 팀 → 선수` 4단계 드릴다운 + 브레드크럼(상위 클릭 시 하위 리셋). 최대 3명, 중복 방지
+- **`demo html/comparison-data.js` 신규** — 두 시안 공용. 로스터(2시즌×2리그×팀×선수) + 결정적 seeded 스탯 생성 + 백분위(시즌·리그 전체 선수 기준) 계산. 패스/수비 2레벨 스탯 잠정 정의 포함
+- 검증: Chrome으로 1·2안 모두 필터 전환·드롭다운·캐스케이딩 추가(K리그2 선수 교차 추가 포함) 동작 확인
+
+### Added (2026-06-03) — 선수 스탯 비교 페이지 시안
+- **`docs/player_comparison_spec.md` 신규 작성** — 사용자 구술 요구 기반 비교 기능 명세 (기존 디자인 가이드와 독립 관리). 선수 선택 4단계(시즌→리그→팀→선수, 최대 3명), 스탯 2레벨 카테고리, 비교 단위 3종(전체합계/90분당/백분위), 시각화 1안(히트맵)·2안(바차트)
+- **디자인 토큰 실측 확정** — `kleague.com/about/reference.do` computed style에서 추출: 색상(bg `#0A0A0A`/surface `#1C1C1C`/accent 네이비 `#001C48`), 폰트(국문 Noto Sans KR / 영문 Montserrat[Campton 무료 대체] / 숫자 Roboto). 이전 "K리그 레드 accent" 추정은 폐기(실제 네이비)
+- **`demo html/kleague-comparison-v1-heatmap.html`** — 1안: 행=스탯/열=선수 그리드 히트맵, 셀 네이비 농도로 값 표현 + 행별 ★ 최고값
+- **`demo html/kleague-comparison-v2-barchart.html`** — 2안: Squawka Matrix 구조 선수 카드(헤더 네이비+사선 모티브) + 스탯별 가로 바 + ★ 최고값 + 선수 추가 점선 슬롯
+- 두 시안 공통: 단위 토글(전체합계/90분당/백분위) JS 동작, K리그1 2025 슈팅 카테고리 샘플 데이터 내장
+
+### Docs / Cleanup (2026-06-03) — 디자인 문서 충돌 정리
+- **`docs/WEBDESIGN_GUIDE_PART2.md` 삭제** — 디자인 가이드가 아닌 구현 스캐폴딩 계획서이고, git 미추적 + CLAUDE.md 문서표 미등록 + 내부 경로 모순(`kleague-matrix` vs `scratch/kleague-matrix`) 상태였음
+- **백그라운드 세션 worktree 정리** — `.claude/worktrees/`의 worktree 3개(`elated-einstein-878c58`·`elegant-blackwell-575f73`·`strange-ramanujan-1c52d1`) 및 동명 `claude/*` 브랜치 제거 (main에 미병합된 디자인 문서 편집 폐기, blackwell의 Priority 5·6 포함)
+- **`docs/WEBDESIGN_GUIDE.md` 정비**
+  - 기술 스택 미확정(Next.js/D3 vs React/Streamlit/Chart.js) 충돌을 상단 경고 배너로 명시
+  - §7 산출물 인벤토리를 실제 `demo html/`와 동기화 (v4-realdata·matrix-v5·seoul-season-analysis 추가)
+- **`docs/todo_list.md`**: "0. 웹 구현 기술 스택 정본(SSoT) 확정" 이슈 등록
+
 ---
 
 ## [0.8.6] - 2026-05-11

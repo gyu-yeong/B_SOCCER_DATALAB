@@ -3,6 +3,15 @@
 > 이 문서는 세션 간 디자인 일관성 유지를 위한 **단일 진실 공급원(Single Source of Truth)**입니다.
 > 새 웹 페이지/컴포넌트를 만들 때 반드시 이 가이드를 따르세요.
 
+> [!WARNING]
+> **⚠️ 기술 스택 미확정 (충돌 해결 보류 중)** — 본격 구현 프레임워크/차트/DB가 문서 간 불일치 상태입니다.
+> - `README.md` + `kleague-design-agent.md`: **Next.js 14 + D3.js + PostgreSQL**
+> - 본 가이드 §6·§8(과거 서술): React → Streamlit / Chart.js·Recharts / PostgreSQL 지향
+> - (구) `WEBDESIGN_GUIDE_PART2.md`: Vite+React + Recharts + SQLite — **2026-06-03 폐기됨**
+>
+> 정본 스택 확정 전까지 **§6 단계별 전환·§8 데이터 연결의 기술 명칭은 잠정값**으로 간주할 것.
+> 확정 시 본 배너 삭제하고 §6·§8·README·design-agent를 일괄 동기화한다. (todo_list.md 참조)
+
 ---
 
 ## 1. 디자인 철학
@@ -151,6 +160,8 @@
 ### Priority 1: 선수 비교 매트릭스
 - ✅ `demo html/kleague-comparison-v2.html` — 다크 테마
 - ✅ `demo html/kleague-comparison-v3-datamb.html` — 라이트 테마
+- ✅ `demo html/kleague-comparison-v4-realdata.html` — 실데이터 연동본
+- ✅ `demo html/kleague-matrix-v5.html` — 매트릭스 v5
 - **다음 단계**: DB 연동 (정적 DATA 객체 → API fetch)
 
 ### Priority 2: 선수 랭킹 차트
@@ -164,6 +175,10 @@
 
 ### Priority 4: 팀/선수 스타일 지표 차트 (미구현)
 - 레퍼런스: PSG 스타일 슬라이더 차트 (Sofascore)
+
+### Priority 5: 팀/시즌 분석 페이지
+- ✅ `demo html/seoul-season-analysis-v1.0.html` — FC 서울 2025→2026 시즌 분석
+- **다음 단계**: 팀 선택 드롭다운으로 전 구단 범용화
 
 ---
 
