@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed (2026-06-07) — master_id 충돌(동명이인 병합) 근본 해결 (todo #11)
+- **`scripts/kleague_scripts/patch_master_conflicts.py` 신규** — 이름 기반 매핑이 서로 다른 두 사람을 한 `master_id`로 병합하던 문제를 정답 소스 `season_roster`(season·team_id·jersey→master) + 이름·생년 검증으로 교정. **12개 player_id를 올바른 master로 재매핑**(김태환 394→92/1667, 김민우 174→290, 김경민 56→643, 김동진 512→1091, 김정현 1095→623/517, 이탈로 400→2209, 서재민 1055→40, 박민서 850→869)
+- **결과**: (시즌·리그·선수) 출전수 상한 초과 **11건 → 0건**. `export_comparison_data.py` 재생성 시 [DROP] 0건(이전 11건), `players.generated.json` 1502→**1526 선수-시즌**(동명이인 분리 반영). 잔여 경계 2건(2025 KL1 야고 40·티아고 39)은 충돌 아님(승강PO, 정상 보존)
+- **idempotent** — 재실행 시 0건 변경, 사전(master 존재)·사후(충돌 0건) 자동 검증. `build_db.py` 재실행 후 재실행 필요
+- DB 백업: `database/kleague.db.bak_master_conflicts_20260607`
+- 부수 발견 → todo #12(매핑 정확도 전수 점검: 전역 단일후보 2,824건/모호 2,781건), #13(name_kor 영문 표기·중복 master) 등록
+
 ### Docs (2026-06-07) — 기술 스택 명시 + 문서 정합성
 - **기술 스택 "현재 vs 추후" 명시** — 데모 단계 구현(SQLite→정적 JSON→vanilla JS)이 확정·동작 중이며 **추후 변경 가능**(FastAPI 등)임을 문서에 명시
   - `WEBDESIGN_GUIDE.md` 상단 배너를 미확정 경고 → "현재 확정 스택 + 추후 변경 가능"으로 갱신

@@ -138,6 +138,38 @@ python scripts/kleague_scripts/patch_homonym_masters.py
 
 ---
 
+### `patch_master_conflicts.py` — 동명이인 병합(master_id 충돌) 재매핑 패치
+
+#### 역할
+이름 기반 매핑이 **서로 다른 두 사람(동명이인)을 한 `master_id`로 병합**해 (시즌·리그·선수) 출전수가 리그 라운드 상한을 초과하던 문제(todo #11) 교정. 정답 소스 `season_roster(season, team_id, jersey_number → master_id)` + 이름·생년 검증으로 각 `player_id`의 올바른 master를 확정해 `player_match_stats`·`players`의 `master_id`를 UPDATE.
+
+#### 실행 방법
+```bash
+# build_db.py 실행 직후 실행 → 이후 export_comparison_data.py 재실행
+python scripts/kleague_scripts/patch_master_conflicts.py
+```
+
+#### 재매핑 규칙 (`REMAP`: player_id → 정정 master_id) — 12건
+| player_id | 팀#번호 | 이름 | 현재→정정 | 정정 master(생년) |
+|---|---|---|---|---|
+| 16621·26274 | 전북#23·#39 | 김태환 | 394→**92** | 1989-07-24 |
+| 19029 | 강원#35 | 김태환 | 394→**1667** | 2006-05-29 |
+| 17794·28227 | 대전#23·#55 | 김민우 | 174→**290** | 2002-03-16 |
+| 19518 | 광주#1 | 김경민 | 56→**643** | 1991-11-01(GK) |
+| 20102 | 안양#22 | 김동진 | 512→**1091** | 1992-12-28 |
+| 18489 | 대구#44 | 김정현 | 1095→**623** | 2000-06-09 |
+| 42325 | 충북청주#28 | 김정현 | 1095→**517** | 2004-06-29 |
+| 29031 | 대구#17 | 이탈로 | 400→**2209** | 1996-11-07 |
+| 33950 | 인천#15 | 서재민 | 1055→**40** | 2003-09-16 |
+| 37435 | 경남#77 | 박민서 | 850→**869** | 1998-06-30 |
+
+#### 특이사항
+- idempotent (이미 정정된 행은 0건 변경), 사전(master 존재)·사후(충돌 0건) 자동 검증
+- `build_db.py` 실행 후 재실행 필요 (master_id 전체 리셋되므로)
+- 일부 정정 대상 master(623·40·869·517·2209)는 `name_kor`가 영문 로마자 — 별개 실인물이나 표기 정규화는 별도 품질 이슈(todo)
+
+---
+
 ## ETL 스크립트 (`scripts/kleague_scripts/`)
 
 **경로**: `scripts/kleague_scripts/`

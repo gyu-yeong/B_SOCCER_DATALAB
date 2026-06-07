@@ -84,15 +84,10 @@
   2. `patch_homonym_masters.py`의 `PATCH_RULES`에 케이스 추가
   3. 재실행 → master_id 정확성 검증
 
-### 11. master_id 충돌로 시즌 출전수 과대 집계 (비교 시안 EDA에서 검출)
-- **현황 (2026-06-07)**: `export_comparison_data.py`로 (시즌·리그·선수) 집계 시, **(master,match) dedup 후에도 출전수>42인 선수-시즌 11건** 검출. K리그1=38R / K리그2≤41R 한계를 초과 → 한 `master_id`에 **서로 다른 두 사람(동명이인)** 의 경기가 병합된 것으로 추정 (distinct player_id=2).
-- **대표 케이스**: 이동경(id=56) 2025 KL1 63경기·2024 KL1 52경기, 박민수(id=850) 2024 KL2 61경기, 이동경(id=1055)·문창진(id=1095) 등
-- **영향**: 해당 11명의 합계·90분당·백분위 모집단이 왜곡. 비교 시안(`players.generated.json`)에 그대로 반영됨.
-- **해결 방법 (근본 — 미완)**:
-  1. 해당 master_id들의 player_id 2개가 동일인인지 동명이인인지 확인 (birth_date·team_id·season_roster)
-  2. 동명이인이면 master 분리 + `player_match_stats.master_id` 재매핑 (#10 패치 룰 연계)
-  3. 재매핑 후 `export_comparison_data.py` 재실행 → 드롭 0건 검증
-- **임시 조치 (✅ 적용, 2026-06-07)**: `export_comparison_data.py`가 `games > 리그상한+2`(KL1>40/KL2>43) **11건을 추출에서 드롭**. 경계 2건(2025 KL1 39·40경기)은 승강PO 가능성으로 보존+로그. → 데모(`players.generated.json`)는 정상화됨. **근본 재매핑은 여전히 필요.**
+### 11. master_id 충돌로 시즌 출전수 과대 집계 — ✅ 해결 (2026-06-07)
+- **근본 해결**: `scripts/kleague_scripts/patch_master_conflicts.py` 신규. 정답 소스 `season_roster`(season·team_id·jersey→master) + 이름·생년 검증으로 **12개 player_id를 올바른 master로 재매핑**(김태환·김민우·김경민·김동진·김정현·이탈로·서재민·박민서 동명이인 분리).
+- **검증**: (시즌·리그·선수) 출전수 상한 초과 **11건 → 0건**. `export_comparison_data.py` 재생성 시 [DROP] 0건, players 1502→**1526**. 잔여 경계 2건(2025 KL1 야고 40·티아고 39)은 충돌 아님(승강PO 가능, 정상 보존).
+- **참고**: export의 임시 드롭 가드는 회귀 방지용 안전망으로 유지(현재 드롭 0건). `build_db.py` 재실행 시 patch 재실행 필요.
 
 ---
 
@@ -192,3 +187,13 @@
 ### 7. player_master 시즌별 인적정보 이력 관리
 - **현황**: market_value_eur 등이 제거되어 현재는 시장가치 미관리
 - **고려**: 시장가치 데이터가 대시보드에 필요해질 경우 `player_master_history` 테이블 분리 검토
+
+### 12. master_id 매핑 정확도 전수 점검 (#11 해결 중 발견)
+- **현황 (2026-06-07)**: #11 진단 중 `season_roster`(season·team_id·jersey→master) 정답 대조 결과, player_match_stats 28,395건 중 **현재 master와 다른 단일 후보 2,824건 / 모호(sr 복수) 2,781건** 발견. #11은 출전수 상한 초과(>cap+2)로 *검출된* 11건만 교정했으나, 상한 미만이라 드러나지 않은 mis-mapping이 다수 잔존 가능.
+- **영향**: 일부 선수 합계·백분위가 미세 왜곡될 수 있음(상한 미초과라 데모 드롭엔 안 걸림).
+- **해결 방향**: build_db.py Phase 3 disambiguation을 `season_roster` 기준으로 강화(이름+team만이 아니라 jersey까지), 또는 `patch_master_conflicts.py` 방식의 전수 재매핑(단일 후보만 안전 적용, 모호건 수동). 모호 2,781건은 등번호 재사용/season_roster 중복 가능성 → 별도 정제 필요.
+
+### 13. player_master.name_kor 영문 로마자 표기 정규화 (#11 해결 중 발견)
+- **현황 (2026-06-07)**: 일부 master의 `name_kor`가 한글이 아닌 영문 로마자(예: master 623 `Jeong-hyun Kim`, 40 `Jae-min Seo`, 869 `Min-seo Park`, 517 `Jung-hyun Kim`, 2209 `Ítalo Carvalho`). 별개 실인물이라 매핑은 정확하나 화면 표기가 영문으로 노출됨.
+- **추가**: master 638·2209 모두 `이탈로/1996-11-07`로 **중복 master 의심** → 통합 검토.
+- **해결 방법**: TM_squads CSV `name_kor` 한글 보정 후 build_db.py 재실행, 또는 player_master 직접 UPDATE.
