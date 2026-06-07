@@ -29,6 +29,13 @@ def human_sleep(a=2, b=5):
 # driver 생성
 # --------------------------------------------------
 def create_driver():
+    """
+    K리그 데이터 포털 진입 드라이버 생성.
+
+    포털 정책 변경(2026-05 시점): portal.kleague.com 직접 접속 시 로그인 요구.
+    공식 안내: "K리그 홈페이지(배너 클릭)를 통해서 접속하시면 로그인 없이 사용 가능"
+    → kleague.com → data.kleague.com 흐름 + Referer 헤더로 우회.
+    """
 
     options = Options()
     options.page_load_strategy = "eager"
@@ -41,17 +48,28 @@ def create_driver():
         service=Service(driver_path),
         options=options
     )
+
+    # webdriver 흔적 제거 (DOM 진입 전)
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    })
+
+    # Referer 헤더 강제 설정 — portal 입장에서 K리그 홈에서 온 것처럼 보이게
+    driver.execute_cdp_cmd("Network.enable", {})
+    driver.execute_cdp_cmd("Network.setExtraHTTPHeaders", {
+        "headers": {"Referer": "https://www.kleague.com/"}
+    })
+
+    # 1단계: K리그 메인 홈페이지 방문 (세션 쿠키 + 정상 흐름 확보)
+    driver.get("https://www.kleague.com/")
+    human_sleep(3, 5)
+
+    # 2단계: 데이터 포털 진입
     driver.get("https://data.kleague.com")
-
     human_sleep(3, 6)
-
-    driver.execute_script(
-        "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-    )
 
     # frame 이동
     frames = driver.find_elements(By.TAG_NAME, "frame")
-
     for frame in frames:
         src = frame.get_attribute("src")
         if src and "portal.kleague.com" in src:

@@ -80,6 +80,23 @@
 
 ---
 
+## [0.8.7] - 2026-05-11
+
+### Data
+- **2026 K리그1 8R~15R 경기 결과 적재 완료** — `ETL_scheduler.py --competition K리그1 --year 2026 --from-round 8 --to-round 15`
+  - player_match_stats: 28,395 → **30,310건** (+1,915건)
+  - 48경기(8라운드 × 6경기) / 라운드당 평균 239명
+  - schedule.match_id 연결: 8R-15R 각 6/6 (100%)
+  - 비고: schedule상 14R(5/12-13)·15R(5/16-17)은 오늘 이후이지만 포털에 데이터 존재 → 일정 vs 실제 진행 불일치 가능성
+
+### Fixed (CRITICAL)
+- **K리그 포털 로그인 우회** — `portal.kleague.com` 직접 접속 시 로그인 페이지로 리다이렉트되는 정책 변경(2026-05) 대응
+  - 우회 흐름: `kleague.com` 메인 → `data.kleague.com` 진입 + Referer 헤더 강제 설정
+  - `webdriver` 흔적 제거를 `Page.addScriptToEvaluateOnNewDocument`로 변경 (DOM 진입 *전* 적용)
+- `ETL_backpill_stable.create_driver()`: `Network.setExtraHTTPHeaders`로 Referer `https://www.kleague.com/` 강제 + K리그 홈 방문 단계 추가
+
+---
+
 ## [0.8.6] - 2026-05-11
 
 ### Fixed (CRITICAL)
