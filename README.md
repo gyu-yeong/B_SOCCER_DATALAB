@@ -32,7 +32,11 @@ Squawka의 Comparison Matrix에서 영감을 얻어, 복잡한 숫자 테이블 
 
 ## 기술 스택
 
-| 영역 | 스택 |
+> ⚠️ **아래 표는 목표(지향) 아키텍처이며 미확정입니다.**
+> **현재 데모/POC 단계 구현은** `SQLite`(`database/kleague.db`) → `scripts/export_comparison_data.py`로 **정적 JSON** 추출 → vanilla JS + `python -m http.server`(로컬) / GitHub Pages(배포) 방식입니다.
+> 이 SQLite + 정적 JSON 전달 방식은 데모 단계 한정이며, **추후 백엔드(FastAPI 등)·DB·프런트 프레임워크로 변경될 수 있습니다.** (상세: `docs/player_comparison_spec.md`, `docs/WEBDESIGN_GUIDE.md`)
+
+| 영역 | 스택 (목표) |
 |------|------|
 | 프론트엔드 | Next.js 14 (App Router) + TypeScript |
 | 시각화 | D3.js + Framer Motion |

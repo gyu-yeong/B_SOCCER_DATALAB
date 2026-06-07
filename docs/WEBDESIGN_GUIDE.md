@@ -3,14 +3,12 @@
 > 이 문서는 세션 간 디자인 일관성 유지를 위한 **단일 진실 공급원(Single Source of Truth)**입니다.
 > 새 웹 페이지/컴포넌트를 만들 때 반드시 이 가이드를 따르세요.
 
-> [!WARNING]
-> **⚠️ 기술 스택 미확정 (충돌 해결 보류 중)** — 본격 구현 프레임워크/차트/DB가 문서 간 불일치 상태입니다.
-> - `README.md` + `kleague-design-agent.md`: **Next.js 14 + D3.js + PostgreSQL**
-> - 본 가이드 §6·§8(과거 서술): React → Streamlit / Chart.js·Recharts / PostgreSQL 지향
-> - (구) `WEBDESIGN_GUIDE_PART2.md`: Vite+React + Recharts + SQLite — **2026-06-03 폐기됨**
->
-> 정본 스택 확정 전까지 **§6 단계별 전환·§8 데이터 연결의 기술 명칭은 잠정값**으로 간주할 것.
-> 확정 시 본 배너 삭제하고 §6·§8·README·design-agent를 일괄 동기화한다. (todo_list.md 참조)
+> [!IMPORTANT]
+> **기술 스택 — 현재(데모/POC 단계) vs 추후**
+> - **현재 구현 (확정·동작 중, 2026-06-07)**: `SQLite`(`database/kleague.db`) → `scripts/export_comparison_data.py`로 **정적 JSON**(`demo html/players.generated.json`) 추출 → vanilla JS `fetch` → `python -m http.server`(로컬, `start_demo.bat`) / GitHub Pages(배포). 색·폰트는 `docs/player_comparison_spec.md` §6(포털 실측 네이비 `#001C48` + Noto Sans KR / Montserrat / Roboto)에서 확정.
+> - **⚠️ 추후 변경 가능**: 위 **SQLite + 정적 JSON 전달 방식은 데모 단계 한정**이며, 향후 백엔드(FastAPI 등)·DB·프런트 프레임워크로 **교체될 수 있다**. `README.md`의 목표 아키텍처(Next.js + D3.js + PostgreSQL)는 **지향점이며 미확정**.
+> - 따라서 §6 단계별 전환·§8 데이터 연결의 기술 명칭은 **잠정값**으로 간주한다.
+> - (참고) 구 `WEBDESIGN_GUIDE_PART2.md`는 2026-06-03 폐기됨.
 
 ---
 

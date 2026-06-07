@@ -84,20 +84,26 @@
   2. `patch_homonym_masters.py`의 `PATCH_RULES`에 케이스 추가
   3. 재실행 → master_id 정확성 검증
 
+### 11. master_id 충돌로 시즌 출전수 과대 집계 (비교 시안 EDA에서 검출)
+- **현황 (2026-06-07)**: `export_comparison_data.py`로 (시즌·리그·선수) 집계 시, **(master,match) dedup 후에도 출전수>42인 선수-시즌 11건** 검출. K리그1=38R / K리그2≤41R 한계를 초과 → 한 `master_id`에 **서로 다른 두 사람(동명이인)** 의 경기가 병합된 것으로 추정 (distinct player_id=2).
+- **대표 케이스**: 이동경(id=56) 2025 KL1 63경기·2024 KL1 52경기, 박민수(id=850) 2024 KL2 61경기, 이동경(id=1055)·문창진(id=1095) 등
+- **영향**: 해당 11명의 합계·90분당·백분위 모집단이 왜곡. 비교 시안(`players.generated.json`)에 그대로 반영됨.
+- **해결 방법 (근본 — 미완)**:
+  1. 해당 master_id들의 player_id 2개가 동일인인지 동명이인인지 확인 (birth_date·team_id·season_roster)
+  2. 동명이인이면 master 분리 + `player_match_stats.master_id` 재매핑 (#10 패치 룰 연계)
+  3. 재매핑 후 `export_comparison_data.py` 재실행 → 드롭 0건 검증
+- **임시 조치 (✅ 적용, 2026-06-07)**: `export_comparison_data.py`가 `games > 리그상한+2`(KL1>40/KL2>43) **11건을 추출에서 드롭**. 경계 2건(2025 KL1 39·40경기)은 승강PO 가능성으로 보존+로그. → 데모(`players.generated.json`)는 정상화됨. **근본 재매핑은 여전히 필요.**
+
 ---
 
 ## 🟡 보통 (품질 개선)
 
-### 0. 웹 구현 기술 스택 정본(SSoT) 확정
-- **현황 (2026-06-03)**: 디자인 문서 간 본격 구현 스택이 불일치 — 본격 웹디자인 착수 전 결정 필요
-  - `README.md` + `docs/kleague-design-agent.md`: **Next.js 14 + D3.js + PostgreSQL + Redis**
-  - `docs/WEBDESIGN_GUIDE.md` §6·§8: React → Streamlit / Chart.js·Recharts / PostgreSQL 지향
-  - (구) `docs/WEBDESIGN_GUIDE_PART2.md`: Vite+React + Recharts + SQLite → **2026-06-03 폐기(삭제) 완료**
-- **정리 완료분 (2026-06-03)**:
-  - `WEBDESIGN_GUIDE_PART2.md` 삭제 (디자인 가이드 아닌 구현 계획서 + git 미추적 + 내부 경로 모순)
-  - 백그라운드 세션 worktree 3개(`claude/elated-einstein`·`elegant-blackwell`·`strange-ramanujan`) + 브랜치 제거 (미병합 디자인 편집 폐기)
-  - `WEBDESIGN_GUIDE.md`에 스택 미확정 경고 배너 추가 + §7 산출물 인벤토리 동기화
-- **해결 방법**: 정본 스택 1개 확정 → `WEBDESIGN_GUIDE.md` §6·§8, `README.md`, `kleague-design-agent.md` 일괄 동기화 → GUIDE 상단 경고 배너 삭제
+### 0. 웹 구현 기술 스택 — 현황 정리 (방향 결정됨, 추적 종료)
+- **결정 (2026-06-07)**: 데모/POC 단계는 **SQLite(`kleague.db`) → 정적 JSON(`players.generated.json`) → vanilla JS** 방식으로 확정. **이는 데모 한정이며 추후(FastAPI 등) 변경될 수 있음** — 단, 전환은 별도 작업 항목으로 트래킹하지 않음(필요 시점에 착수).
+- **문서 정합성 정리 완료**:
+  - (2026-06-03) `WEBDESIGN_GUIDE_PART2.md` 삭제(가이드 아닌 구현 계획서·git 미추적·내부 경로 모순), 백그라운드 worktree 3개 + 브랜치 제거
+  - (2026-06-07) `WEBDESIGN_GUIDE.md` 배너를 "현재 SQLite+JSON 확정 / 추후 변경 가능"으로 갱신, `README.md` 표를 "목표 아키텍처"로 명시, `player_comparison_spec.md`를 `CLAUDE.md` 문서표 등록
+- **참고**: `README.md`의 Next.js+D3+PostgreSQL+Redis는 미확정 **지향점**. 비교 페이지 실제 색·폰트·measure 정본은 `player_comparison_spec.md` + `export_comparison_data.py`.
 
 ---
 

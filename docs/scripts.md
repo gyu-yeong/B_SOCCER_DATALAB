@@ -375,6 +375,41 @@ python scripts/kleague_scripts/migrate_competitions_dedup.py
 
 ---
 
+## 웹/산출 스크립트 (`scripts/`)
+
+### `export_comparison_data.py` — 선수 비교 시안용 JSON 추출
+
+#### 역할
+`kleague.db`의 `player_match_stats`를 **(시즌·리그·선수)** 단위로 집계해 정적 JSON(`demo html/players.generated.json`)으로 출력. 비교 시안(`kleague-comparison-v1/v2`)이 이 JSON을 fetch해 동작. (추후 FastAPI 전환 시 동일 집계 로직을 endpoint로 이전)
+
+#### 실행 방법
+```bash
+python scripts/export_comparison_data.py
+```
+
+#### 동작
+1. `player_match_stats ⋈ matches ⋈ competitions ⋈ player_master` 조인, master_id NOT NULL만
+2. 대회명 정규화: `하나은행 K리그1`/`K리그2 2025` 등 → `K리그1`/`K리그2`, 슈퍼컵 제외
+3. (시즌·리그·선수)로 합계, 팀=최다 출전팀, 포지션 TM→`FW/MF/DF/GK` 매핑
+4. **이상치 드롭**: `games > 리그 라운드상한+2`(KL1>40/KL2>43)는 master_id 충돌(동명이인 병합)로 보고 제외(로그 출력). 경계(상한<games≤상한+2, 승강PO 가능)는 보존+로그 → `todo #11`
+5. count measure 52개 원본 합계만 저장(파생 비율 11종은 프런트에서 `num/den` 계산)
+6. measure 메타(카테고리/라벨/타입/minDen)·5개 카테고리 함께 출력
+
+#### 입출력
+| 구분 | 경로 |
+|---|---|
+| 입력 | `database/kleague.db` |
+| 출력 | `demo html/players.generated.json` (≈2.0MB, 1,513 선수-시즌) |
+
+#### 주요 상수
+| 상수 | 설명 |
+|---|---|
+| `MIN_MINUTES_FOR_PCT=450` | 백분위 모집단 최소 출전시간(프런트와 동일 기준) |
+| `COUNT_MEASURES` | 저장할 원본 컬럼 52개 |
+| `MEASURES` | 카테고리·라벨·타입(count/rate)·minDen 메타 |
+
+---
+
 ## 스크립트 의존 관계
 
 ```

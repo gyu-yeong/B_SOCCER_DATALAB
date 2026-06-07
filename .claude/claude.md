@@ -11,6 +11,7 @@
 | `docs/todo_list.md` | 데이터 정합성 이슈·품질 개선 이슈 트래커 | 신규 작업 착수 전 기존 알려진 이슈 확인 시 |
 | `docs/WEBDESIGN_GUIDE.md` | 모드 제약·타이포·레이아웃·컴포넌트 규칙 SSoT | 웹 페이지·컴포넌트 구현 전 반드시 확인 |
 | `docs/kleague-design-agent.md` | 웹디자인 POC 서브에이전트 지시문 (역할·컴포넌트·산출물 규칙) | 웹 대시보드 샘플 생성·개선 요청 시 반드시 먼저 읽을 것 |
+| `docs/player_comparison_spec.md` | 선수 비교 페이지 전용 명세 (선택 플로우·measure 목록·비교 단위·색/폰트 토큰·데이터 연결 방식) | 비교 페이지 구현·measure/색상/단위 수정 전. 현재 스택: SQLite→정적 JSON (추후 변경 가능) |
 
 ---
 
@@ -26,6 +27,7 @@
 - `docs/todo_list.md` — 새 이슈 발견 시 추가, 이슈 해결 완료 시 해당 항목 삭제
 - `docs/WEBDESIGN_GUIDE.md` — 모드 규칙·컴포넌트 스펙 변경, 페이지 구현 완료, API 엔드포인트 확정 시
 - `docs/kleague-design-agent.md` — 에이전트 역할·트리거·산출물 규칙 변경 시
+- `docs/player_comparison_spec.md` — 비교 페이지 선택 플로우·measure·단위·색/폰트 토큰·데이터 연결 방식 변경 시 (measure 정본은 `scripts/export_comparison_data.py`의 `MEASURES`)
 
 ---
 
